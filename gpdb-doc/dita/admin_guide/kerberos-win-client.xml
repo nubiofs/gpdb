@@ -123,7 +123,7 @@ Type "help" for help.</codeblock>
           expects a user account to have a Service Principal Name (SPN) defined as an AD user
           attribute, however, it does not appear to be required. You can specify it as a parameter
           to <codeph>ktpass</codeph> and ignore the warning that it cannot be set. </p>
-        <p>The Java JRE <codeph>ktab</codeph> utiltiy does not require an AD Domain Administrator
+        <p>The Java JRE <codeph>ktab</codeph> utility does not require an AD Domain Administrator
           and does not require an SPN.</p>
         <note>When you enter the password to create the keytab file, the password is visible on
           screen.</note>
