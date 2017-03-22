@@ -90,7 +90,7 @@ COPY {table [(<varname>column</varname> [, ...])] | (<varname>query</varname>)} 
           </pt>
           <pd>An optional list of columns to be copied. If no column list is specified, all columns
             of the table will be copied. </pd>
-          <pd>When copying in text format, the default, the data in column of type
+          <pd>When copying in text format, the default, a row of data in column of type
               <codeph>bytea</codeph> can be up to 256MB. </pd>
         </plentry>
         <plentry>
