@@ -19,7 +19,7 @@
        [CSV [QUOTE [ AS ] '<varname>quote</varname>'] 
             [FORCE NOT NULL <varname>column</varname> [, ...]]
        [FILL MISSING FIELDS]
-       [[LOG ERRORS [INTO <varname>error_table</varname>] [KEEP] 
+       [[LOG ERRORS]  
        SEGMENT REJECT LIMIT <varname>count</varname> [ROWS | PERCENT] ]
 
 COPY {table [(<varname>column</varname> [, ...])] | (<varname>query</varname>)} TO {'<varname>file</varname>' | STDOUT}
@@ -58,22 +58,22 @@ COPY {table [(<varname>column</varname> [, ...])] | (<varname>query</varname>)} 
           <codeph>CHECK</codeph>, or <codeph>UNIQUE</codeph> constraint will still be handled in
         'all-or-nothing' input mode. The user can specify the number of error rows acceptable (on a
         per-segment basis), after which the entire <codeph>COPY FROM</codeph> operation will be
-        aborted and no rows will be loaded. Note that the count of error rows is per-segment, not
-        per entire load operation. If the per-segment reject limit is not reached, then all rows not
-        containing an error will be loaded. If the limit is not reached, all good rows will be
-        loaded and any error rows discarded. If you would like to keep error rows for further
-        examination, you can optionally declare an error table using the <codeph>LOG ERRORS
-          INTO</codeph> clause. Any rows containing a format error would then be logged to the
-        specified error table.</p>
+        aborted and no rows will be loaded. The count of error rows is per-segment, not per entire
+        load operation. If the per-segment reject limit is not reached, then all rows not containing
+        an error will be loaded and any error rows discarded. To keep error rows for further
+        examination, specify the <codeph>LOG ERRORS</codeph> clause to capture error log
+        information. The error information and the row is stored internally in Greenplum
+        Database.</p>
       <sectiondiv id="section4">
         <b>Outputs</b>
         <p>On successful completion, a <codeph>COPY</codeph> command returns a command tag of the
           form, where <varname>count</varname> is the number of rows copied:</p>
-        <codeblock>COPY <varname>count</varname></codeblock><p>If running a <codeph>COPY
-            FROM</codeph> command in single row error isolation mode, the following notice message
-          will be returned if any rows were not loaded due to format errors, where
-            <varname>count</varname> is the number of rows
-        rejected:</p><codeblock>NOTICE: Rejected <varname>count</varname> badly formatted rows.</codeblock></sectiondiv>
+        <codeblock>COPY <varname>count</varname></codeblock>
+        <p>If running a <codeph>COPY FROM</codeph> command in single row error isolation mode, the
+          following notice message will be returned if any rows were not loaded due to format
+          errors, where <varname>count</varname> is the number of rows rejected:</p>
+        <codeblock>NOTICE: Rejected <varname>count</varname> badly formatted rows.</codeblock>
+      </sectiondiv>
     </section>
     <section id="section5">
       <title>Parameters</title>
