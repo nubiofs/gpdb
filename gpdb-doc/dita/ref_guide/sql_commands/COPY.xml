@@ -69,12 +69,11 @@ COPY {table [(<varname>column</varname> [, ...])] | (<varname>query</varname>)} 
         <b>Outputs</b>
         <p>On successful completion, a <codeph>COPY</codeph> command returns a command tag of the
           form, where <varname>count</varname> is the number of rows copied:</p>
-        <codeblock>COPY <varname>count</varname></codeblock>
-        <p>If running a <codeph>COPY FROM</codeph> command in single row error isolation mode, the
-          following notice message will be returned if any rows were not loaded due to format
-          errors, where <varname>count</varname> is the number of rows rejected:</p>
-        <codeblock>NOTICE: Rejected <varname>count</varname> badly formatted rows.</codeblock>
-      </sectiondiv>
+        <codeblock>COPY <varname>count</varname></codeblock><p>If running a <codeph>COPY
+            FROM</codeph> command in single row error isolation mode, the following notice message
+          will be returned if any rows were not loaded due to format errors, where
+            <varname>count</varname> is the number of rows
+        rejected:</p><codeblock>NOTICE: Rejected <varname>count</varname> badly formatted rows.</codeblock></sectiondiv>
     </section>
     <section id="section5">
       <title>Parameters</title>
