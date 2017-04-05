@@ -173,7 +173,7 @@
                     the destination system must be greater than or equal to the total number of
                     segment hosts on the source system. </p>
                 <p>For example, assume a quarter rack destination system has a total of 24 primary
-                    segments. The means the source system cannot have more than 24 segment hosts
+                    segments. This means that the source system cannot have more than 24 segment hosts
                     (one and one-half racks).</p>
                 <p>When you copy data from a source Greenplum Database system with a larger number
                     of primary segment instances than on the destination system, the data transfer
