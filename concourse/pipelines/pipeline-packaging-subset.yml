@@ -59,4 +59,9 @@ jobs:
     params:
       INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
       INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.zip
-      ADD_README_INSTALL: true
+      ADD_README_INSTALL: tru
+      SUMMARY: foobar
+      GROUP: Development/Tools
+      LICENSE: GPL
+      URL: None
+

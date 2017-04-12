@@ -18,12 +18,12 @@ function setup_rpm_buildroot_centos6() {
 function generate_rpm_spec() {
   cat << EOF > /root/rpmbuild/SPECS/gpdb.spec
 Name: greenplum-db
-Version: ${GP_SHORT_VERSION}
+Version: 5.0.0
 Release: 1
-Summary: foobar
-Group: Development/Tools
-License: GPL
-URL: None
+Summary: ${SUMMARY}
+Group: ${GROUP}
+License: ${LICENSE}
+URL: ${URL}
 Source0: gpdb.tar.gz
 Buildroot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
