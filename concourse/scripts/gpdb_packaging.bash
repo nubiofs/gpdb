@@ -14,11 +14,11 @@ function setup_rpm_buildroot_centos6() {
   cp ${GPDB_TARGZ} /root/rpmbuild/SOURCES/gpdb.tar.gz
 }
 
+# Dynamically generate SPEC file with passed in paramaters
 function generate_rpm_spec() {
-
   cat << EOF > /root/rpmbuild/SPECS/gpdb.spec
 Name: greenplum-db
-Version: 5.0.0
+Version: ${GP_SHORT_VERSION}
 Release: 1
 Summary: foobar
 Group: Development/Tools
@@ -34,7 +34,7 @@ Buildroot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 foobar
 
 %prep
-%setup -c -n %{name}-%{version}
+%setup -q -c -n %{name}-%{version}
 
 %install
 rm -rf \$RPM_BUILD_ROOT
@@ -60,9 +60,13 @@ function echo_expected_env_variables() {
 function _main() {
   substitute_GP_VERSION
   echo_expected_env_variables
+
+  ##### Build RPM
   setup_rpm_buildroot_centos6
   generate_rpm_spec
+  rpmbuild -bb /root/rpmbuild/SPECS/gpdb.spec
 
+  ##### Build Bin
   # Copy gpaddon into addon to ensure the availability of all the installer scripts
   cp -R gpaddon_src gpdb_src/gpAux/addon
 
@@ -80,7 +84,6 @@ function _main() {
   zip "$INSTALLER_ZIP" "$installer_bin"
   openssl dgst -md5 "$INSTALLER_ZIP" > "$INSTALLER_ZIP".md5
 
-  rpmbuild -bb /root/rpmbuild/SPECS/gpdb.spec
 
 }
 

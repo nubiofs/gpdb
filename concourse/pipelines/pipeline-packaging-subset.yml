@@ -1,0 +1,62 @@
+## ======================================================================
+## resources
+## ======================================================================
+
+resources:
+- name: gpdb_src
+  type: git
+  source:
+    branch: build-rpm-119608433
+    private_key: {{gpdb-git-key}}
+    uri: {{gpdb-git-remote}}
+
+- name: gpaddon_src
+  type: git
+  source:
+    branch: {{gpaddon-git-branch}}
+    private_key: {{gpdb-git-key}}
+    uri: {{gpaddon-git-remote}}
+
+- name: centos-gpdb-dev-6
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: '6-gcc6.2-llvm3.7'
+    username: {{docker_username}}
+    password: {{docker_password}}
+
+- name: bin_gpdb_centos6
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: {{bin_gpdb_centos_versioned_file}}
+
+## ======================================================================
+## jobs
+## ======================================================================
+
+# Stage 1: Build and C Unit Tests
+
+jobs:
+
+- name: gpdb_rc_packaging_centos
+  plan:
+  - aggregate:
+    - get: gpdb_src
+    - get: gpaddon_src
+    - get: bin_gpdb_centos6
+    - get: centos-gpdb-dev-6
+  - task: gpdb_rc_packaging_centos6
+    file: gpdb_src/concourse/tasks/gpdb_packaging.yml
+    image: centos-gpdb-dev-6
+    input_mapping:
+      bin_gpdb: bin_gpdb_centos6 
+    output_mapping:
+      packaged_gpdb: packaged_gpdb_rc_centos6
+    params:
+      INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
+      INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.zip
+      ADD_README_INSTALL: true
