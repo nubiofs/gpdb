@@ -32,7 +32,7 @@ Buildroot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 %define bin_gpdb %{prefix}%{name}-%{version}
 
 %description
-foobar
+${DESCRIPTION}
 
 %prep
 %setup -q -c -n %{name}-%{version}

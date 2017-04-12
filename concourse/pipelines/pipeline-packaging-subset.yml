@@ -25,14 +25,68 @@ resources:
     username: {{docker_username}}
     password: {{docker_password}}
 
+- name: centos-gpdb-dev-7
+  type: docker-image
+  source:
+    repository: pivotaldata/centos-gpdb-dev
+    tag: 7-gcc6.2-llvm3.7
+    username: {{docker_username}}
+    password: {{docker_password}}
+
 - name: bin_gpdb_centos6
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
-    bucket: {{bucket-name}}
+    bucket: gpdb5-concourse-builds 
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: {{bin_gpdb_centos_versioned_file}}
+
+- name: bin_gpdb_centos7
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: {{bin_gpdb_centos7_versioned_file}}
+
+- name: rpm_rhel6_gpdb_rc
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-rhel6-x86_64.rpm
+
+- name: rpm_rhel6_gpdb_rc_md5
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-rhel6-x86_64.rpm.md5
+
+- name: rpm_rhel7_gpdb_rc
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-rhel7-x86_64.rpm
+
+- name: rpm_rhel7_gpdb_rc_md5
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-rhel7-x86_64.rpm.md5
+
 
 ## ======================================================================
 ## jobs
@@ -48,20 +102,59 @@ jobs:
     - get: gpdb_src
     - get: gpaddon_src
     - get: bin_gpdb_centos6
+    - get: bin_gpdb_centos7
     - get: centos-gpdb-dev-6
-  - task: gpdb_rc_packaging_centos6
-    file: gpdb_src/concourse/tasks/gpdb_packaging.yml
-    image: centos-gpdb-dev-6
-    input_mapping:
-      bin_gpdb: bin_gpdb_centos6 
-    output_mapping:
-      packaged_gpdb: packaged_gpdb_rc_centos6
-    params:
-      INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
-      INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.zip
-      ADD_README_INSTALL: tru
-      SUMMARY: foobar
-      GROUP: Development/Tools
-      LICENSE: GPL
-      URL: None
+    - get: centos-gpdb-dev-7
+  - aggregate:
+    - task: gpdb_rc_packaging_centos6
+      file: gpdb_src/concourse/tasks/gpdb_packaging.yml
+      image: centos-gpdb-dev-6
+      input_mapping:
+        bin_gpdb: bin_gpdb_centos6
+      output_mapping:
+        packaged_gpdb: packaged_gpdb_rc_centos6
+      params:
+        INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
+        INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.zip
+        BUILT_RPM: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.rpm
+        GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz
+        ADD_README_INSTALL: true
+        SUMMARY: UNKNOWN
+        DESCRIPTION: UNKNOWN
+        GROUP: Development/Tools
+        LICENSE: UNKNOWN
+        URL: None
+    - task: gpdb_rc_packaging_centos7
+      file: gpdb_src/concourse/tasks/gpdb_packaging.yml
+      image: centos-gpdb-dev-7
+      input_mapping:
+        bin_gpdb: bin_gpdb_centos7
+      output_mapping:
+        packaged_gpdb: packaged_gpdb_rc_centos7
+      params:
+        INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
+        INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel7-x86_64.zip
+        GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz
+        BUILT_RPM: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel7-x86_64.rpm
+        ADD_README_INSTALL: true
+        SUMMARY: UNKNOWN
+        DESCRIPTION: UNKNOWN
+        GROUP: Development/Tools
+        LICENSE: UNKNOWN
+        URL: None
+  - aggregate:
+    # RHEL 6
+    - put: rpm_rhel6_gpdb_rc
+      params:
+        file: packaged_gpdb_rc_centos6/greenplum-db-*-build-1-rhel6-x86_64.rpm
+    - put: rpm_rhel6_gpdb_rc_md5
+      params:
+        file: packaged_gpdb_rc_centos6/greenplum-db-*-build-1-rhel6-x86_64.rpm.md5
+    # RHEL 7
+    - put: rpm_rhel7_gpdb_rc
+      params:
+        file: packaged_gpdb_rc_centos7/greenplum-db-*-build-1-rhel7-x86_64.rpm
+    - put: rpm_rhel7_gpdb_rc_md5
+      params:
+        file: packaged_gpdb_rc_centos7/greenplum-db-*-build-1-rhel7-x86_64.rpm.md5
 
