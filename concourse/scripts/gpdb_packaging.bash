@@ -7,11 +7,12 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 substitute_GP_VERSION() {
   GP_VERSION=$("$DIR/../../getversion" --short)
   INSTALLER_ZIP=${INSTALLER_ZIP//@GP_VERSION@/${GP_VERSION}}
+  BUILT_RPM=${BUILT_RPM//@GP_VERSION@/${GP_VERSION}}
 }
 
 function setup_rpm_buildroot_centos6() {
   mkdir -p /root/rpmbuild/{SOURCES,SPECS}
-  cp ${GPDB_TARGZ} /root/rpmbuild/SOURCES/gpdb.tar.gz
+  cp "${GPDB_TARGZ}" /root/rpmbuild/SOURCES/gpdb.tar.gz
 }
 
 # Dynamically generate SPEC file with passed in paramaters
@@ -55,6 +56,7 @@ function echo_expected_env_variables() {
   echo "$INSTALL_SCRIPT_SRC"
   echo "$GPDB_TARGZ"
   echo "$INSTALLER_ZIP"
+  echo "$BUILT_RPM"
 }
 
 function _main() {
@@ -65,6 +67,8 @@ function _main() {
   setup_rpm_buildroot_centos6
   generate_rpm_spec
   rpmbuild -bb /root/rpmbuild/SPECS/gpdb.spec
+  cp /root/rpmbuild/RPMS/x86_64/greenplum-db-*.rpm "${BUILT_RPM}"
+  openssl dgst -md5 "$BUILT_RPM" > "$BUILT_RPM".md5
 
   ##### Build Bin
   # Copy gpaddon into addon to ensure the availability of all the installer scripts
@@ -83,8 +87,6 @@ function _main() {
   chmod a+x "$installer_bin"
   zip "$INSTALLER_ZIP" "$installer_bin"
   openssl dgst -md5 "$INSTALLER_ZIP" > "$INSTALLER_ZIP".md5
-
-
 }
 
 _main "$@"
