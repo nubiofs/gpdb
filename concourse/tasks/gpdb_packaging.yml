@@ -10,6 +10,7 @@ outputs:
 run:
   path: gpdb_src/concourse/scripts/gpdb_packaging.bash
 params:
+  PLATFORM:
   INSTALL_SCRIPT_SRC: gpaddon/license/REPLACE_IN_PIPELINE_installer-header-foraspecificOS.sh
   GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz
   INSTALLER_ZIP: packaged_gpdb/greenplum-db-VERSION-OS-x86_64.zip

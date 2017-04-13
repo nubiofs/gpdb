@@ -148,6 +148,7 @@ jobs:
       output_mapping:
         packaged_gpdb: packaged_gpdb_rc_centos6
       params:
+        PLATFORM: rhel6
         INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
         INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.zip
         BUILT_RPM: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel6-x86_64.rpm
@@ -166,6 +167,7 @@ jobs:
       output_mapping:
         packaged_gpdb: packaged_gpdb_rc_centos7
       params:
+        PLATFORM: rhel7
         INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-rhel-gpdb.sh
         INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel7-x86_64.zip
         GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz
@@ -204,6 +206,7 @@ jobs:
     file: gpdb_src/concourse/tasks/gpdb_packaging.yml
     image: sles-gpdb-dev-11-beta
     params:
+      PLATFORM: sles11
       INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-sles-gpdb.sh
       INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-sles11-x86_64.zip
       GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz

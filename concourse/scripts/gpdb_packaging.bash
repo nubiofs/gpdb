@@ -4,20 +4,32 @@ set -euxo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+die() {
+    echo "$*" >/dev/stderr
+    exit 1
+}
+
 substitute_GP_VERSION() {
-  GP_VERSION=$("$DIR/../../getversion" --short)
+  GP_VERSION=$("$DIR/../../../gpdb_src/getversion" --short)
   INSTALLER_ZIP=${INSTALLER_ZIP//@GP_VERSION@/${GP_VERSION}}
   BUILT_RPM=${BUILT_RPM//@GP_VERSION@/${GP_VERSION}}
 }
 
-function setup_rpm_buildroot_centos6() {
-  mkdir -p /root/rpmbuild/{SOURCES,SPECS}
-  cp "${GPDB_TARGZ}" /root/rpmbuild/SOURCES/gpdb.tar.gz
+# currently, this script has only be tested on rhel6,7 and sles11
+case "$PLATFORM" in
+    sles*) RPMBUILD_TOPDIR=/usr/src/packages ;;
+    rhel*) RPMBUILD_TOPDIR=/root/rpmbuild ;;
+    *)     die "Unknown platform: $PLATFORM" ;;
+esac
+
+function setup_rpm_buildroot() {
+  mkdir -p "${RPMBUILD_TOPDIR}"/{SOURCES,SPECS}
+  cp "${GPDB_TARGZ}" "${RPMBUILD_TOPDIR}/SOURCES/gpdb.tar.gz"
 }
 
 # Dynamically generate SPEC file with passed in paramaters
 function generate_rpm_spec() {
-  cat << EOF > /root/rpmbuild/SPECS/gpdb.spec
+  cat << EOF > "${RPMBUILD_TOPDIR}/SPECS/gpdb.spec"
 Name: greenplum-db
 Version: 5.0.0
 Release: 1
@@ -64,10 +76,10 @@ function _main() {
   echo_expected_env_variables
 
   ##### Build RPM
-  setup_rpm_buildroot_centos6
+  setup_rpm_buildroot
   generate_rpm_spec
-  rpmbuild -bb /root/rpmbuild/SPECS/gpdb.spec
-  cp /root/rpmbuild/RPMS/x86_64/greenplum-db-*.rpm "${BUILT_RPM}"
+  rpmbuild -bb "${RPMBUILD_TOPDIR}/SPECS/gpdb.spec"
+  cp "${RPMBUILD_TOPDIR}"/RPMS/x86_64/greenplum-db-*.rpm "${BUILT_RPM}"
   openssl dgst -md5 "$BUILT_RPM" > "$BUILT_RPM".md5
 
   ##### Build Bin
