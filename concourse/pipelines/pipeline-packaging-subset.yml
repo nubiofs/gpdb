@@ -33,11 +33,19 @@ resources:
     username: {{docker_username}}
     password: {{docker_password}}
 
+- name: sles-gpdb-dev-11-beta
+  type: docker-image
+  source:
+    repository: pivotaldata/sles-gpdb-dev
+    tag: 11-beta
+    username: {{docker_username}}
+    password: {{docker_password}}
+
 - name: bin_gpdb_centos6
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
-    bucket: gpdb5-concourse-builds 
+    bucket: gpdb5-concourse-builds
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: {{bin_gpdb_centos_versioned_file}}
@@ -46,10 +54,19 @@ resources:
   type: s3
   source:
     access_key_id: {{bucket-access-key-id}}
-    bucket: gpdb5-concourse-toolsmiths
+    bucket: gpdb5-concourse-builds
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: {{bin_gpdb_centos7_versioned_file}}
+
+- name: bin_gpdb_sles11
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-builds
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    versioned_file: {{bin_gpdb_sles11_versioned_file}}
 
 - name: rpm_rhel6_gpdb_rc
   type: s3
@@ -87,6 +104,23 @@ resources:
     secret_access_key: {{bucket-secret-access-key}}
     regexp: greenplum-rpms/greenplum-db-(.*)-build-1-rhel7-x86_64.rpm.md5
 
+- name: rpm_sles11_gpdb_rc
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-sles11-x86_64.rpm
+
+- name: rpm_sles11_gpdb_rc_md5
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: gpdb5-concourse-toolsmiths
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: greenplum-rpms/greenplum-db-(.*)-build-1-sles11-x86_64.rpm.md5
 
 ## ======================================================================
 ## jobs
@@ -157,4 +191,34 @@ jobs:
     - put: rpm_rhel7_gpdb_rc_md5
       params:
         file: packaged_gpdb_rc_centos7/greenplum-db-*-build-1-rhel7-x86_64.rpm.md5
+
+- name: gpdb_rc_packaging_sles
+  plan:
+  - aggregate:
+    - get: gpdb_src
+    - get: gpaddon_src
+    - get: bin_gpdb
+      resource: bin_gpdb_sles11
+    - get: sles-gpdb-dev-11-beta
+  - task: gpdb_rc_packaging_sles
+    file: gpdb_src/concourse/tasks/gpdb_packaging.yml
+    image: sles-gpdb-dev-11-beta
+    params:
+      INSTALL_SCRIPT_SRC: gpdb_src/gpAux/addon/license/installer-header-sles-gpdb.sh
+      INSTALLER_ZIP: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-sles11-x86_64.zip
+      GPDB_TARGZ: bin_gpdb/bin_gpdb.tar.gz
+      BUILT_RPM: packaged_gpdb/greenplum-db-@GP_VERSION@-build-1-rhel7-x86_64.rpm
+      ADD_README_INSTALL: true
+      SUMMARY: UNKNOWN
+      DESCRIPTION: UNKNOWN
+      GROUP: Development/Tools
+      LICENSE: UNKNOWN
+      URL: None
+  - aggregate:
+    - put: rpm_sles11_gpdb_rc
+      params:
+        file: packaged_gpdb/greenplum-db-*-build-1-sles11-x86_64.rpm
+    - put: rpm_sles11_gpdb_rc_md5
+      params:
+        file: packaged_gpdb/greenplum-db-*-build-1-sles11-x86_64.rpm.md5
 
