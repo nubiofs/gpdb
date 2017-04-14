@@ -9,7 +9,7 @@
  *
  *
  * IDENTIFICATION
- *	  $PostgreSQL: pgsql/src/backend/optimizer/util/pathnode.c,v 1.142.2.1 2008/04/21 20:54:24 tgl Exp $
+ *	  $PostgreSQL: pgsql/src/backend/optimizer/util/pathnode.c,v 1.146 2008/08/14 18:47:59 tgl Exp $
  *
  *-------------------------------------------------------------------------
  */
@@ -26,6 +26,7 @@
 #include "optimizer/pathnode.h"
 #include "optimizer/paths.h"
 #include "optimizer/tlist.h"
+#include "optimizer/var.h"
 #include "parser/parse_expr.h"
 #include "parser/parse_oper.h"
 #include "parser/parsetree.h"
@@ -685,7 +686,7 @@ cdb_is_path_deduped_walker(Path *path, void* context)
                 return status;
 
             /* Subqueries on inner side of JOIN_IN can't cause duplicates. */
-            if (joinpath->jointype == JOIN_IN)
+            if (joinpath->jointype == JOIN_SEMI) //8.4-9.0-MERGE-FIX-ME: Can we replace JOIN_IN with JOIN_SEMI here?
             {
                 if (!inner_rel->dedup_info ||
                     !inner_rel->dedup_info->prejoin_dedup_subqrelids)
@@ -1210,8 +1211,8 @@ create_index_path(PlannerInfo *root,
 		 * into different lists, it should be sufficient to use pointer
 		 * comparison to remove duplicates.)
 		 *
-		 * Always assume the join type is JOIN_INNER; even if some of the join
-		 * clauses come from other contexts, that's not our problem.
+		 * Note that we force the clauses to be treated as non-join clauses
+		 * during selectivity estimation.
 		 */
 		allclauses = list_union_ptr(rel->baserestrictinfo, allclauses);
 		pathnode->rows = rel->tuples *
@@ -1219,6 +1220,7 @@ create_index_path(PlannerInfo *root,
 								   allclauses,
 								   rel->relid,	/* do not use 0! */
 								   JOIN_INNER,
+								   NULL,
 								   false /* use_damping */);
 		/* Like costsize.c, force estimate to be at least one row */
 		pathnode->rows = clamp_row_est(pathnode->rows);
@@ -1666,17 +1668,26 @@ create_material_path(PlannerInfo *root, RelOptInfo *rel, Path *subpath)
 	return pathnode;
 }
 
+//8.4-9.0-MERGE-FIX-ME: This function has changed quite a lot
+//Need to identify what all changes to get from commit: e006a24a
 /*
  * create_unique_path
  *	  Creates a path representing elimination of distinct rows from the
- *	  input data.
+ *	  input data.  Distinct-ness is defined according to the needs of the
+ *	  semijoin represented by sjinfo.  If it is not possible to identify
+ *	  how to make the data unique, NULL is returned.
+ *
+ * If used at all, this is likely to be called repeatedly on the same rel;
+ * and the input subpath should always be the same (the cheapest_total path
+ * for the rel).  So we cache the result.
  */
-static UniquePath *
+UniquePath *
 create_unique_path(PlannerInfo *root,
                    Path        *subpath,
                    List        *distinct_on_exprs,
 				   List		   *distinct_on_operators,
-                   Relids       distinct_on_rowid_relids)
+                   Relids       distinct_on_rowid_relids,
+				   SpecialJoinInfo *sjinfo)
 {
 	UniquePath *pathnode;
 	Path		sort_path;		/* dummy for result of cost_sort */
@@ -1685,6 +1696,8 @@ create_unique_path(PlannerInfo *root,
 	int			numCols;
     double      subpath_rows;
     bool        hashable = false;
+	List       *uniq_exprs;
+	bool            all_btree;
 
     subpath_rows = cdbpath_rows(root, subpath);
 
@@ -1881,7 +1894,9 @@ create_unique_exprlist_path(PlannerInfo *root, Path *subpath,
     /* Create the UniquePath node.  (Might return NULL if enable_sort = off.) */
     uniquepath = create_unique_path(root, subpath,
 									distinct_on_exprs, distinct_on_operators,
-									NULL);
+									NULL,
+									NULL //8.4-9.0-MERGE-FIX-ME: Validate the value of sjinfo
+									);
 
 	return uniquepath;
 }                               /* create_unique_exprlist_path */
@@ -1919,7 +1934,7 @@ create_unique_rowid_path(PlannerInfo *root,
     Assert(!bms_is_empty(distinct_relids));
 
     /* Create the UniquePath node.  (Might return NULL if enable_sort = off.) */
-    uniquepath = create_unique_path(root, subpath, NIL, NIL, distinct_relids);
+    uniquepath = create_unique_path(root, subpath, NIL, NIL, distinct_relids, NULL /* 8.4-9.0-MERGE-FIX-ME: Validate the value of sjinfo */);
     if (!uniquepath)
         return NULL;
 
@@ -2433,7 +2448,7 @@ cdb_jointype_to_join_in(RelOptInfo *joinrel, JoinType jointype, Path *inner_path
         !IsA(inner_path, UniquePath) &&
         jointype == JOIN_INNER)
     {
-        jointype = JOIN_IN;
+        jointype = JOIN_SEMI; //8.4-9.0-MERGE-FIX-ME: Any impact of changing it to JOIN_SEMI from JOIN_IN
     }
     return jointype;
 }                               /* cdb_jointype_to_join_in */
@@ -2477,6 +2492,7 @@ path_contains_inner_index(Path *path)
  *
  * 'joinrel' is the join relation.
  * 'jointype' is the type of join required
+ * 'sjinfo' is extra info about the join for selectivity estimation
  * 'outer_path' is the outer path
  * 'inner_path' is the inner path
  * 'restrict_clauses' are the RestrictInfo nodes to apply at the join
@@ -2488,6 +2504,7 @@ NestPath *
 create_nestloop_path(PlannerInfo *root,
 					 RelOptInfo *joinrel,
 					 JoinType jointype,
+					 SpecialJoinInfo *sjinfo,
 					 Path *outer_path,
 					 Path *inner_path,
 					 List *restrict_clauses,
@@ -2566,7 +2583,7 @@ create_nestloop_path(PlannerInfo *root,
 
 	pathnode->path.sameslice_relids = bms_union(inner_path->sameslice_relids, outer_path->sameslice_relids);
 
-	cost_nestloop(pathnode, root);
+	cost_nestloop(pathnode, root, sjinfo);
 
 	return pathnode;
 }
@@ -2578,6 +2595,7 @@ create_nestloop_path(PlannerInfo *root,
  *
  * 'joinrel' is the join relation
  * 'jointype' is the type of join required
+ * 'sjinfo' is extra info about the join for selectivity estimation
  * 'outer_path' is the outer path
  * 'inner_path' is the inner path
  * 'restrict_clauses' are the RestrictInfo nodes to apply at the join
@@ -2599,6 +2617,7 @@ MergePath *
 create_mergejoin_path(PlannerInfo *root,
 					  RelOptInfo *joinrel,
 					  JoinType jointype,
+					  SpecialJoinInfo *sjinfo,
 					  Path *outer_path,
 					  Path *inner_path,
 					  List *restrict_clauses,
@@ -2738,7 +2757,7 @@ create_mergejoin_path(PlannerInfo *root,
 	pathnode->outersortkeys = outersortkeys;
 	pathnode->innersortkeys = innersortkeys;
 
-	cost_mergejoin(pathnode, root);
+	cost_mergejoin(pathnode, root, sjinfo);
 
 	return pathnode;
 }
@@ -2749,6 +2768,7 @@ create_mergejoin_path(PlannerInfo *root,
  *
  * 'joinrel' is the join relation
  * 'jointype' is the type of join required
+ * 'sjinfo' is extra info about the join for selectivity estimation
  * 'outer_path' is the cheapest outer path
  * 'inner_path' is the cheapest inner path
  * 'restrict_clauses' are the RestrictInfo nodes to apply at the join
@@ -2759,6 +2779,7 @@ HashPath *
 create_hashjoin_path(PlannerInfo *root,
 					 RelOptInfo *joinrel,
 					 JoinType jointype,
+					 SpecialJoinInfo *sjinfo,
 					 Path *outer_path,
 					 Path *inner_path,
 					 List *restrict_clauses,
@@ -2814,7 +2835,7 @@ create_hashjoin_path(PlannerInfo *root,
 		pathnode->jpath.path.motionHazard = outer_path->motionHazard || inner_path->motionHazard;
 	pathnode->jpath.path.sameslice_relids = bms_union(inner_path->sameslice_relids, outer_path->sameslice_relids);
 
-	cost_hashjoin(pathnode, root);
+	cost_hashjoin(pathnode, root, sjinfo);
 
 	return pathnode;
 }
