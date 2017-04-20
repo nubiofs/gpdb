@@ -343,7 +343,10 @@ CTranslatorRelcacheToDXL::PlIndexOidsPartTable
 	for (ULONG ul = 0; ul < ulIndexes; ul++)
 	{
 		LogicalIndexInfo *pidxinfo = (plgidx->logicalIndexInfo)[ul];
-		plOids = gpdb::PlAppendOid(plOids, pidxinfo->logicalIndexOid);
+		if (!gpdb::FPartialLogicalIndex(pidxinfo))
+		{
+			plOids = gpdb::PlAppendOid(plOids, pidxinfo->logicalIndexOid);
+		}
 	}
 	
 	gpdb::GPDBFree(plgidx);
@@ -1056,7 +1059,6 @@ CTranslatorRelcacheToDXL::Pmdindex
 										pmp,
 										pmdidIndex,
 										pmdname,
-										GPOS_NEW(pmp) CMDIdGPDB(pgIndex->indrelid),
 										pgIndex->indisclustered,
 										emdindt,
 										pmdidItemType,
@@ -1225,7 +1227,7 @@ CTranslatorRelcacheToDXL::PmdindexPartTable
 		}
 	}
 
-	BOOL fPartial = (NULL != pnodePartCnstr || NIL != plDefaultLevels);
+	BOOL fPartial = gpdb::FPartialLogicalIndex(pidxinfo);
 
 	if (NULL == pnodePartCnstr)
 	{
@@ -1243,7 +1245,6 @@ CTranslatorRelcacheToDXL::PmdindexPartTable
 	CMDPartConstraintGPDB *pmdpartcnstr = PmdpartcnstrIndex(pmp, pmda, pmdrel, pnodePartCnstr, pdrgpulDefaultLevels, fUnbounded);
 
 	pdrgpulDefaultLevels->Release();
-	pmdrel->Pmdid()->AddRef();
 	pmdidIndex->AddRef();
 	
 	GPOS_ASSERT(INDTYPE_BITMAP == pidxinfo->indType || INDTYPE_BTREE == pidxinfo->indType);
@@ -1263,7 +1264,6 @@ CTranslatorRelcacheToDXL::PmdindexPartTable
 										pmp,
 										pmdidIndex,
 										pmdname,
-										pmdrel->Pmdid(),
 										pgIndex->indisclustered,
 										emdindt,
 										pmdidItemType,

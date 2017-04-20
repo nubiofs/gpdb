@@ -187,14 +187,6 @@ CConfigParamMapping::SConfigMappingElem CConfigParamMapping::m_elem[] =
 		GPOS_WSZ_LIT("Disable partition selection in optimizer.")
 		},
 
-
-		{
-		EopttraceDisableSortForDMLOnParquet,
-		&gp_parquet_insert_sort,
-		true, // m_fNegate
-		GPOS_WSZ_LIT("Disable sorting of table oids below INSERT on Parquet tables.")
-		},
-
 		{
 		EopttraceDisableOuterJoin2InnerJoinRewrite,
 		&optimizer_enable_outerjoin_rewrite,
@@ -448,12 +440,9 @@ CConfigParamMapping::PbsPack
 		 pbs->FExchangeSet(GPOPT_DISABLE_XFORM_TF(CXform::ExfMaxOneRow2Assert));
 	}
 
-	if (!optimizer_enable_partial_index)
-	{
-		CBitSet *pbsHeterogeneousIndex = CXform::PbsHeterogeneousIndexXforms(pmp);
-		pbs->Union(pbsHeterogeneousIndex);
-		pbsHeterogeneousIndex->Release();
-	}
+	CBitSet *pbsHeterogeneousIndex = CXform::PbsHeterogeneousIndexXforms(pmp);
+	pbs->Union(pbsHeterogeneousIndex);
+	pbsHeterogeneousIndex->Release();
 
 	return pbs;
 }

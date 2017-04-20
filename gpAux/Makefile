@@ -28,9 +28,9 @@ all : devel
 .PHONY : autoconf
 
 # Internal functions which are invoked by other rules within this makefile
-.PHONY : mkgpfdist mkgpperfmon copydocs mgmtcopy copylibs
+.PHONY : mkgpfdist copydocs mgmtcopy copylibs
 .PHONY : greenplum_path RECONFIG HOMEDEP GPROOTDEP GPROOTDEP GPROOTFAIL
-.PHONY : gccVersionCheck clients loaders connectivity gppkg
+.PHONY : gccVersionCheck clients loaders gppkg
 
 #---------------------------------------------------------------------
 # Make 3rd-party libraries and tools
@@ -76,32 +76,25 @@ RELEASE=devel
 GPDIR=greenplum-db-$(RELEASE)
 PLRDIR=greenplum-plr-$(RELEASE)
 CLIENTDIR=greenplum-clients-$(RELEASE)
-CONNECTIVITYDIR=greenplum-connectivity-$(RELEASE)
 LOADERSDIR=greenplum-loaders-$(RELEASE)
 GPDOCDIR=$(CURDIR)/docs/release
 
 DISTPATH=$(GPROOT)/$(GPDIR)
 CLIENTDISTPATH=$(GPROOT)/$(CLIENTDIR)
-CONNECTIVITYDISTPATH=$(GPROOT)/$(CONNECTIVITYDIR)
 LOADERSDISTPATH=$(GPROOT)/$(LOADERSDIR)
-GPPERFMONDISTPATH=$(GPROOT)
 GPPKGDISTPATH=$(GPROOT)
 
 ifeq "$(DEVPATH)" ""
 BLD_HOME=$(HOME)
 DEVPATH=$(BLD_HOME)/$(GPDIR)
-GPPERFMONDEVPATH=$(BLD_HOME)
 GPPKGDEVPATH=$(BLD_HOME)
 CLIENTDEVPATH=$(BLD_HOME)/$(CLIENTDIR)
-CONNECTIVITYDEVPATH=$(BLD_HOME)/$(CONNECTIVITYDIR)
 LOADERSDEVPATH=$(BLD_HOME)/$(LOADERSDIR)
 else
 # DEVPATH has been passed in as by the build scripts
 GPROOT_DEV=$(dir $(DEVPATH))
-GPPERFMONDEVPATH=$(GPROOT_DEV)
 GPPKGDEVPATH=$(GPROOT_DEV)
 CLIENTDEVPATH=$(GPROOT_DEV)$(CLIENTDIR)
-CONNECTIVITYDEVPATH=$(GPROOT_DEV)$(CONNECTIVITYDIR)
 LOADERSDEVPATH=$(GPROOT_DEV)$(LOADERSDIR)
 endif
 
@@ -161,16 +154,18 @@ else
 APR_CONFIG=--with-apr-config=$(BLD_THIRDPARTY_BIN_DIR)/apr-1-config
 endif
 
+APU_CONFIG=--with-apu-config=$(BLD_THIRDPARTY_BIN_DIR)/apu-1-config
+
 CODEGEN_CONFIG=--enable-codegen --with-codegen-prefix=/opt/llvm-3.7.1
 
 win32_CONFIGFLAGS=--with-gssapi --without-libcurl $(APR_CONFIG)
 sol10_x86_64_CONFIGFLAGS=--enable-snmp --with-libxml $(APR_CONFIG)
 rhel5_x86_32_CONFIGFLAGS=--host=i686-pc-linux-gnu --enable-snmp --enable-ddboost --with-gssapi --enable-netbackup --with-libxml $(APR_CONFIG)
-rhel5_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
-rhel6_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
-rhel7_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
-suse10_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
-suse11_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
+rhel5_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+rhel6_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+rhel7_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+suse10_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost --enable-gpperfmon ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+suse11_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost --enable-gpperfmon ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
 linux_x86_64_CONFIGFLAGS=--enable-snmp ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
 osx106_x86_CONFIGFLAGS=--enable-snmp ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
 
@@ -327,26 +322,22 @@ define BUILD_STEPS
 	#@$(MAKE) mgmtcopy INSTLOC=$(INSTLOC)
 	@$(MAKE) mkpgbouncer INSTLOC=$(INSTLOC) BUILDDIR=$(BUILDDIR)
 	@$(MAKE) mkpgbench INSTLOC=$(INSTLOC) BUILDDIR=$(BUILDDIR)
-	@$(MAKE) mkgpperfmon INSTLOC=$(INSTLOC) BUILDDIR=$(BUILDDIR)
 	@$(MAKE) mkplatform INSTLOC=$(INSTLOC)
 	if [ "$(findstring $(BLD_ARCH),$(SERVER_PLATFORMS))" != "" ]; then \
 	  $(MAKE) mkgpcloud INSTLOC=$(INSTLOC) && \
 	  $(MAKE) mkgphdfs INSTLOC=$(INSTLOC) && \
-	  $(MAKE) mkorafce INSTLOC=$(INSTLOC); \
+	  $(MAKE) mkorafce INSTLOC=$(INSTLOC);  \
 	fi
 	cd extensions/gpmapreduce/ && $(MAKE) install
 	@$(MAKE) copydocs INSTLOC=$(INSTLOC)
 	@$(MAKE) copylibs INSTLOC=$(INSTLOC)
 	@$(MAKE) clients INSTLOC=$(INSTLOC) CLIENTINSTLOC=$(CLIENTINSTLOC)
 	@$(MAKE) set_scripts_version INSTLOC=$(CLIENTINSTLOC)
-	@$(MAKE) connectivity INSTLOC=$(INSTLOC) CONNECTIVITYINSTLOC=$(CONNECTIVITYINSTLOC)
-	@$(MAKE) set_scripts_version INSTLOC=$(CONNECTIVITYINSTLOC)
 	@$(MAKE) loaders INSTLOC=$(INSTLOC) LOADERSINSTLOC=$(LOADERSINSTLOC)
 	@$(MAKE) set_scripts_version INSTLOC=$(LOADERSINSTLOC)
 	@$(MAKE) set_scripts_version INSTLOC=$(CLIENTINSTLOC)
 	@$(MAKE) copylicense INSTLOC=$(INSTLOC) \
                          CLIENTINSTLOC=$(CLIENTINSTLOC) \
-                         CONNECTIVITYINSTLOC=$(CONNECTIVITYINSTLOC) \
                          LOADERSINSTLOC=$(LOADERSINSTLOC)
 	@$(MAKE) gppkg INSTLOC=$(INSTLOC) GPPKGINSTLOC=$(GPPKGINSTLOC)
 endef
@@ -360,8 +351,6 @@ define BUILD_STEPS
 	@$(MAKE) copylibs INSTLOC=$(INSTLOC)
 	@$(MAKE) loaders INSTLOC=$(INSTLOC) LOADERSINSTLOC=$(LOADERSINSTLOC)
 	@$(MAKE) set_scripts_version INSTLOC=$(LOADERSINSTLOC)
-	@$(MAKE) connectivity INSTLOC=$(INSTLOC) CONNECTIVITYINSTLOC=$(CONNECTIVITYINSTLOC)
-	@$(MAKE) set_scripts_version INSTLOC=$(CONNECTIVITYINSTLOC)
 endef
 endif
 
@@ -396,7 +385,6 @@ define BUILD_STEPS
 	cp -p $(GPMGMT)/bin/gpload.py $(INSTLOC)/bin/gpload.py
 	$(MAKE) copylibs INSTLOC=$(INSTLOC)
 	$(MAKE) clients INSTLOC=$(INSTLOC) CLIENTINSTLOC=$(CLIENTINSTLOC)
-	$(MAKE) connectivity INSTLOC=$(INSTLOC) CONNECTIVITYINSTLOC=$(CONNECTIVITYINSTLOC)
 	if [ "$(findstring hpux_ia64,$(BLD_ARCH))" = "hpux_ia64" ]; then \
 	  cd $(GPMGMT)/bin && $(MAKE) pygresql LDFLAGS="" INSTLOC=$(INSTLOC) ; \
 	elif [ "$(findstring win,$(BLD_ARCH))" != "win" ]; then \
@@ -431,9 +419,7 @@ endif
 devel : INSTCFLAGS=$(DEBUGFLAGS)
 devel : INSTLOC=$(DEVPATH)
 devel : CLIENTINSTLOC=$(CLIENTDEVPATH)
-devel : CONNECTIVITYINSTLOC=$(CONNECTIVITYDEVPATH)
 devel : LOADERSINSTLOC=$(LOADERSDEVPATH)
-devel : GPPERFMONINSTLOC=$(GPPERFMONDEVPATH)
 devel : GPPKGINSTLOC=$(GPPKGDEVPATH)
 devel : CONFIGFLAGS+= --enable-cassert --enable-debug --enable-testutils --enable-debugbreak --enable-depend
 ifdef ENABLE_VPATH_BUILD
@@ -452,9 +438,7 @@ endif
 dist : INSTCFLAGS=$(OPTFLAGS)
 dist : INSTLOC=$(DISTPATH)
 dist : CLIENTINSTLOC=$(CLIENTDISTPATH)
-dist : CONNECTIVITYINSTLOC=$(CONNECTIVITYDISTPATH)
 dist : LOADERSINSTLOC=$(LOADERSDISTPATH)
-dist : GPPERFMONINSTLOC=$(GPPERFMONDISTPATH)
 dist : GPPKGINSTLOC=$(GPPKGDISTPATH)
 ifdef ENABLE_VPATH_BUILD
 dist : BUILDDIR=Release
@@ -471,9 +455,7 @@ endif
 dist_prof : INSTCFLAGS=$(PROFFLAGS)
 dist_prof : INSTLOC=$(DISTPATH)
 dist_prof : CLIENTINSTLOC=$(CLIENTDISTPATH)
-dist_prof : CONNECTIVITYINSTLOC=$(CONNECTIVITYDISTPATH)
 dist_prof : LOADERSINSTLOC=$(LOADERSDISTPATH)
-dist_prof : GPPERFMONINSTLOC=$(GPPERFMONDISTPATH)
 dist_prof : CONFIGFLAGS+= --enable-testutils
 ifdef ENABLE_VPATH_BUILD
 dist_prof : BUILDDIR=Release
@@ -486,7 +468,6 @@ endif
 	$(BUILD_STEPS)
 
 dist_faultinj : CLIENTINSTLOC=$(CLIENTDISTPATH)
-dist_faultinj : CONNECTIVITYINSTLOC=$(CONNECTIVITYDISTPATH)
 dist_faultinj : LOADERSINSTLOC=$(LOADERSDISTPATH)
 dist_faultinj : CONFIGFLAGS+= --enable-testutils --enable-debugbreak
 ifdef ENABLE_VPATH_BUILD
@@ -509,11 +490,9 @@ endif
 
 ifneq "$(GPROOT)" ""
 CLIENT_HOME_DIR=$(GPROOT)
-CONNECTIVITY_HOME_DIR=$(GPROOT)
 LOADERS_HOME_DIR=$(GPROOT)
 else
 CLIENT_HOME_DIR=$(BLD_HOME)
-CONNECTIVITY_HOME_DIR=$(BLD_HOME)
 dist_faultinj : CLIENTINSTLOC=$(CLIENTDISTPATH)
 LOADERS_HOME_DIR=$(BLD_HOME)
 endif
@@ -534,11 +513,6 @@ LOADERSINSTLOC_LIB_PWARE=$(LOADERSINSTLOC)/lib/pware
 LOADERSINSTLOC_DOCS=$(LOADERSINSTLOC)/docs
 LOADERSINSTLOC_OPENSOURCE=$(LOADERSINSTLOC)/thirdparty
 
-CONNECTIVITYINSTLOC=$(CONNECTIVITY_HOME_DIR)/greenplum-connectivity
-CONNECTIVITYINSTLOC_LIB=$(CONNECTIVITYINSTLOC)/lib
-CONNECTIVITYINSTLOC_INCLUDE=$(CONNECTIVITYINSTLOC)/include
-CONNECTIVITYINSTLOC_DOCS=$(CONNECTIVITYINSTLOC)/docs
-CONNECTIVITYINSTLOC_OPENSOURCE=$(CONNECTIVITYINSTLOC)/thirdparty
 
 ifneq "$(findstring win,$(BLD_ARCH))" "win"
 DOC_TYPE=Unix
@@ -598,7 +572,7 @@ endif
 AIX_LOADERS_LIBS=libbz2.a libz.a libpq.a liblber*.a libldap*.a libyaml*.a
 Darwin_LOADERS_LIBS=libcrypto.*.dylib libssl.*.dylib libpq.*.dylib* libkrb5.*.dylib libcom_err.*.dylib libldap_r-*.dylib libk5crypto.*.dylib libkrb5support.*.dylib liblber-*.dylib libyaml*.dylib
 HP-UX_LOADERS_LIBS=libcrypto.so* libssl.so.* libz.so* libpq.so* libapr* libyaml*so*
-Linux_LOADERS_LIBS=libcrypto.so* libssl.so.* libz.so* libpq.so* libkrb5.so* libcom_err.so* libk5crypto.so* libkrb5support.so* liblber*.so* libldap_r-*so* libgssapi_krb5.so* libyaml*so*
+Linux_LOADERS_LIBS=libcrypto.so* libssl.so.*  libpq.so* libkrb5.so* libcom_err.so* libk5crypto.so* libkrb5support.so* liblber*.so* libldap_r-*so* libgssapi_krb5.so* libyaml*so*
 SunOS_LOADERS_LIBS=libcrypto.so* libssl.so.* libgcc_s.so.1 libz.so* libpq.so* libk5crypto.so* libkrb5support.so* liblber*.so* libldap_r-*so* libcom_err.so* libkrb5.so* libyaml*so*
 Windows_LOADERS_LIBS=comerr32.dll gssapi32.dll k5sprt32.dll kclnt32.dll kfwlogon.dll krb4cred.dll krb4cred_en_us.dll krb524.dll krb5_32.dll krb5cred.dll krb5cred_en_us.dll krbcc32.dll krbv4w32.dll leashw32.dll nidmgr32.dll wshelp32.dll xpprof32.dll libpq.dll
 define tmpLOADERS_FILESET_LIB
@@ -651,37 +625,6 @@ ifeq "$(findstring win,$(BLD_ARCH))" "win"
 BLD_PACKAGING_PID:=$(shell ssh build@harpy 'echo $$$$')
 endif
 
-connectivity :
-	@if [ ! -z "$(CONNECTIVITYINSTLOC)" ] && [ "$(CONNECTIVITYINSTLOC)" != "/" ]; then \
-	  echo "rm -rf $(CONNECTIVITYINSTLOC)"; \
-	  rm -rf $(CONNECTIVITYINSTLOC); \
-	fi
-ifeq "$(findstring connectivity,$(BLD_TARGETS))" ""
-	# ---- build and packaging of the Connectivity package is currently disabled;
-	# ---- set BLD_TARGETS="connectivity" to enable them.
-else
-	# ---- load LD_LIBRARY_PATH with the GPDB library set and build the ODBC drivers ----
-	cd $(INSTLOC)/ && \
-	  . ./greenplum_path.sh; \
-	# ---- copy GPDB fileset ----
-	mkdir -p $(CONNECTIVITYINSTLOC_LIB)
-	(cd $(INSTLOC)/lib && $(TAR) cf - *) | (cd $(CONNECTIVITYINSTLOC_LIB)/ && $(TAR) xvpf -)$(check_pipe_for_errors)
-	mkdir -p $(CONNECTIVITYINSTLOC_INCLUDE)
-	(cd $(INSTLOC)/include && $(TAR) cf - *) | (cd $(CONNECTIVITYINSTLOC_INCLUDE)/ && $(TAR) xvpf -)$(check_pipe_for_errors)
-
-	# ---- copy license files ----
-	cp ${BLD_TOP}/../LICENSE $(CONNECTIVITYINSTLOC)
-	cp ${BLD_TOP}/../NOTICE $(CONNECTIVITYINSTLOC)
-
-	# ---- create the installer ----
-	$(warn MPP_ARCH=$(MPP_ARCH))
-
-	# ---- updating the version in required packages ----
-	@$(MAKE) set_scripts_version INSTLOC=$(CONNECTIVITYINSTLOC)
-  cd client/install/src/unix/ && \
-     $(MAKE) TAR=$(TAR) PRODUCT=Connectivity PACKAGE=greenplum-connectivity README=GPConnectUnix VERSION=$(VERSION) INSTALL_SRC=$(CONNECTIVITYINSTLOC) INSTALL_DIR=../../../..
-
-endif
 
 clients :
 	if [ ! -z "$(CLIENTINSTLOC)" ] && [ "$(CLIENTINSTLOC)" != "/" ]; then rm -rf $(CLIENTINSTLOC); fi
@@ -708,8 +651,8 @@ endif
 
 	# ---- Updating the version in required packages ----
 	@$(MAKE) set_scripts_version INSTLOC=$(CLIENTINSTLOC)
-  cd client/install/src/unix/ && \
-      $(MAKE) TAR=$(TAR) PRODUCT=Clients PACKAGE=greenplum-clients README=GPClientToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(CLIENTINSTLOC) INSTALL_DIR=../../../..
+	cd client/install/src/unix/ && \
+	$(MAKE) TAR=$(TAR) PRODUCT=Clients PACKAGE=greenplum-clients README=GPClientToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(CLIENTINSTLOC) INSTALL_DIR=../../../..
 
 endif
 
@@ -761,8 +704,8 @@ endif
 
 	# ---- updating the version in required packages ----
 	@$(MAKE) set_scripts_version INSTLOC=$(LOADERSINSTLOC)
-  cd client/install/src/unix/ && \
-      $(MAKE) TAR=$(TAR) PRODUCT=Loaders PACKAGE=greenplum-loaders README=GPLoadToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(LOADERSINSTLOC) INSTALL_DIR=../../../..
+	cd client/install/src/unix/ && \
+	$(MAKE) TAR=$(TAR) PRODUCT=Loaders PACKAGE=greenplum-loaders README=GPLoadToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(LOADERSINSTLOC) INSTALL_DIR=../../../..
 
 endif
 
@@ -887,19 +830,6 @@ else
 	@cd extensions/pgbouncer/source && ./configure --with-libevent=$(BLD_TOP)/ext/$(BLD_ARCH) --prefix=$(INSTLOC) --enable-evdns
 	$(MAKE) -C extensions/pgbouncer/source install
 endif
-
-mkgpperfmon:
-	@cd $(GPPERFMON) && $(MAKE) BUILDDIR=$(BUILDDIR)
-	cp -p gpperfmon/src/gpmon/gpmmon gpperfmon/src/gpmon/gpsmon $(INSTLOC)/bin
-	cp -p gpperfmon/src/gpmon/gpperfmoncat.sh $(INSTLOC)/bin
-	cp -p gpperfmon/src/gpmon/gpmon_catqrynow.py $(INSTLOC)/sbin
-	cp -p gpperfmon/src/gpmon/gpperfmon_install $(INSTLOC)/bin
-	mkdir -p $(INSTLOC)/lib/gpperfmon
-	cp -p gpperfmon/src/gpmon/gpperfmon3.sql $(INSTLOC)/lib/gpperfmon
-	cp -p gpperfmon/src/gpmon/gpperfmon4.sql $(INSTLOC)/lib/gpperfmon
-	cp -p gpperfmon/src/gpmon/gpperfmon41.sql $(INSTLOC)/lib/gpperfmon
-	cp -p gpperfmon/src/gpmon/gpperfmon42.sql $(INSTLOC)/lib/gpperfmon
-	cp -p gpperfmon/src/gpmon/gpperfmonC.sql $(INSTLOC)/lib/gpperfmon
 
 mkplatform:
 	@cd $(PLATFORM) && $(MAKE)
@@ -1052,7 +982,6 @@ copylibs : thirdparty-dist copy-nbu-libs
 ifeq "$(findstring $(BLD_ARCH),aix5_ppc_32 aix5_ppc_64 win32 win64)" ""
 	# Copy curl header file
 	cp -rp $(BLD_THIRDPARTY_INCLUDE_DIR)/curl $(INSTLOC)/include/
-	# Copy in openssl files needed by gpperfmon
 endif
 ifeq "$(findstring $(BLD_ARCH),aix5_ppc_32 win32 win64)" ""
 ifneq "$(BLD_ARCH)" "osx104_x86"
@@ -1080,7 +1009,7 @@ greenplum_path:
 	  releng/generate-greenplum-path.sh $(INSTLOC) > $(INSTLOC)/greenplum_path.sh
 
 copylicense:
-	for proddir in $(INSTLOC) $(CLIENTINSTLOC) $(CONNECTIVITYINSTLOC) $(LOADERSINSTLOC); do \
+	for proddir in $(INSTLOC) $(CLIENTINSTLOC) $(LOADERSINSTLOC); do \
 	   if [ -d $${proddir} ]; then \
 	      echo cp -v ${BLD_TOP}/LICENSE $${proddir}; \
 	      echo cp -v ${BLD_TOP}/NOTICE  $${proddir}; \

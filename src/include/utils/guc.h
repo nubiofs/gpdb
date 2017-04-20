@@ -241,6 +241,7 @@ extern bool Debug_filerep_print;
 extern bool Debug_filerep_gcov;
 extern bool Debug_filerep_config_print;
 extern bool Debug_filerep_memory_log_flush;
+extern bool Debug_resource_group;
 extern bool filerep_mirrorvalidation_during_resync;
 extern bool log_filerep_to_syslogger;
 extern bool gp_crash_recovery_suppress_ao_eof;
@@ -460,7 +461,6 @@ extern bool optimizer_apply_left_outer_to_union_all_disregarding_stats;
 extern bool optimizer_enable_ctas;
 extern bool optimizer_remove_order_below_dml;
 extern bool optimizer_static_partition_selection;
-extern bool optimizer_enable_partial_index;
 extern bool optimizer_dml_triggers;
 extern bool	optimizer_dml_constraints;
 extern bool optimizer_direct_dispatch;
@@ -491,15 +491,6 @@ extern int codegen_optimization_level;
  * Enable logging of DPE match in optimizer.
  */
 extern bool	optimizer_partition_selection_log;
-
-/*
- * During insertion in a table with parquet partitions,
- * require tuples to be sorted by partition key.
- *
- * This reduces the amount of memory required during execution by
- * keeping only one partition open at a time.
- */
-extern bool gp_parquet_insert_sort;
 
 extern char  *gp_email_smtp_server;
 extern char  *gp_email_smtp_userid;
