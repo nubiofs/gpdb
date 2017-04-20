@@ -82,7 +82,7 @@
 		<topicref href="ref_guide/sql_commands/ALTER_INDEX.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_LANGUAGE.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_OPERATOR.xml"/>
-		<topicref href="ref_guide/sql_commands/ALTER_OPERATOR_CLASS.xml"/>
+		<topicref href="ref_guide/sql_commands/ALTER_OPERATOR_FAMILY.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_PROTOCOL.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_RESOURCE_QUEUE.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_ROLE.xml"/>
@@ -92,7 +92,7 @@
 		<topicref href="ref_guide/sql_commands/ALTER_TABLESPACE.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_TRIGGER.xml" otherprops="op-hidden"/>
 		<topicref href="ref_guide/sql_commands/ALTER_TYPE.xml"/>
-		<topicref href="ref_guide/sql_commands/ALTER_USER.xml"/>
+		<topicref href="ref_guide/sql_commands/ALTER_VIEW.xml"/>
 		<topicref href="ref_guide/sql_commands/ANALYZE.xml"/>
 		<topicref href="ref_guide/sql_commands/BEGIN.xml"/>
 		<topicref href="ref_guide/sql_commands/CHECKPOINT.xml"/>
@@ -112,7 +112,7 @@
 		<topicref href="ref_guide/sql_commands/CREATE_INDEX.xml"/>
 		<topicref href="ref_guide/sql_commands/CREATE_LANGUAGE.xml"/>
 		<topicref href="ref_guide/sql_commands/CREATE_OPERATOR.xml"/>
-		<topicref href="ref_guide/sql_commands/CREATE_OPERATOR_CLASS.xml"/>
+		<topicref href="ref_guide/sql_commands/CREATE_OPERATOR_FAMILY.xml"/>
 		<topicref href="ref_guide/sql_commands/CREATE_PROTOCOL.xml"/>
 		<topicref href="ref_guide/sql_commands/CREATE_RESOURCE_QUEUE.xml"/>
 		<topicref href="ref_guide/sql_commands/CREATE_ROLE.xml"/>
@@ -128,7 +128,7 @@
 		<topicref href="ref_guide/sql_commands/CREATE_VIEW.xml"/>
 		<topicref href="ref_guide/sql_commands/DEALLOCATE.xml"/>
 		<topicref href="ref_guide/sql_commands/DECLARE.xml"/>
-		<topicref href="ref_guide/sql_commands/DELETE.xml"/>
+		<topicref href="ref_guide/sql_commands/DISCARD.xml"/>
 		<topicref href="ref_guide/sql_commands/DO.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_AGGREGATE.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_CAST.xml"/>
@@ -142,7 +142,7 @@
 		<topicref href="ref_guide/sql_commands/DROP_INDEX.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_LANGUAGE.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_OPERATOR.xml"/>
-		<topicref href="ref_guide/sql_commands/DROP_OPERATOR_CLASS.xml"/>
+		<topicref href="ref_guide/sql_commands/DROP_OPERATOR_FAMILY.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_OWNED.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_PROTOCOL.xml"/>
 		<topicref href="ref_guide/sql_commands/DROP_RESOURCE_QUEUE.xml"/>
@@ -313,4 +313,5 @@
 		navtitle="Greenplum Fuzzy String Match Extension" id="fuzzystrmatch"/>
 	<chapter href="ref_guide/feature_summary.xml" navtitle="Summary of Greenplum Features"
 		id="feature_summary"/>
+	<chapter href="ref_guide/sql_commands/ALTER_OPERATOR_FAMILY.xml"/>
 </bookmap>

@@ -47,6 +47,7 @@
       <li id="ad139897">
         <xref href="./ALTER_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/>
       </li>
+      <li><xref href="ALTER_OPERATOR_FAMILY.xml#topic1/as20941">ALTER OPERATOR FAMILY</xref></li>
       <li id="ad143363">
         <xref href="./ALTER_PROTOCOL.xml#topic1" type="topic" format="dita"/>
       </li>
@@ -76,6 +77,7 @@
         <xref href="./ALTER_USER.xml#topic1" type="topic" format="dita"/>
       </li>
       <li id="ad142578"><codeph>ALTER USER MAPPING</codeph>*</li>
+      <li><xref href="ALTER_VIEW.xml#topic1/am137232">ALTER VIEW</xref></li>
       <li id="ad140332">
         <xref href="./ANALYZE.xml#topic1" type="topic" format="dita"/>
       </li>
@@ -138,6 +140,7 @@
       <li id="ad139926">
         <xref href="./CREATE_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/>
       </li>
+      <li><xref href="CREATE_OPERATOR_FAMILY.xml#topic1/bx20941">CREATE OPERATOR FAMILY</xref></li>
       <li>
         <xref href="./CREATE_PROTOCOL.xml#topic1" type="topic" format="dita"/>
       </li>
@@ -185,6 +188,7 @@
       <li id="ad139940">
         <xref href="./DELETE.xml#topic1" type="topic" format="dita"/>
       </li>
+      <li><xref href="DISCARD.xml#topic1/dn20941">DISCARD</xref></li>
       <li>
         <xref href="./DO.xml#topic1" type="topic" format="dita"/></li>
       <li id="ad140599">
@@ -226,8 +230,10 @@
         <xref href="./DROP_OPERATOR.xml#topic1" type="topic" format="dita"/>
       </li>
       <li id="ad140654">
-        <xref href="./DROP_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/>
+        <abbreviated-form keyref=""
+          ><!--<xref href="./DROP_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/>--></abbreviated-form>
       </li>
+      <li><xref href="DROP_OPERATOR_FAMILY.xml#topic1/da20941">DROP OPERATOR FAMILY</xref></li>
       <li id="ad140658">
         <xref href="./DROP_OWNED.xml#topic1" type="topic" format="dita"/>
       </li>

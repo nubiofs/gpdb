@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE topic
   PUBLIC "-//OASIS//DTD DITA Composite//EN" "ditabase.dtd">
-<topic id="topic1"><title id="da20941">DROP OPERATOR FAMILY</title><body><p id="sql_command_desc">Removes an operator family.</p><section id="section2"><title>Synopsis</title><codeblock id="sql_command_synopsis">DROP OPERATOR CLASS [IF EXISTS] <varname>name</varname> USING <varname>index_method</varname> [CASCADE | RESTRICT]</codeblock></section><section id="section3"><title>Description</title><p><codeph>DROP OPERATOR</codeph> drops an existing operator family. To execute this command you
-        must be the owner of the operator family.</p>
+<topic id="topic1"><title id="da20941">DROP OPERATOR FAMILY</title><body><p id="sql_command_desc">Removes an operator family.</p><section id="section2"><title>Synopsis</title><codeblock id="sql_command_synopsis">DROP OPERATOR FAMILY [IF EXISTS] <varname>name</varname> USING <varname>index_method</varname> [CASCADE | RESTRICT]</codeblock></section><section id="section3"><title>Description</title><p><codeph>DROP OPERATOR FAMILY</codeph> drops an existing operator family. To execute this command
+        you must be the owner of the operator family.</p>
       <p><codeph>DROP OPERATOR FAMILY</codeph> includes dropping any operator classes contained in
         the family, but it does not drop any of the operators or functions referenced by the family.
         If there are any indexes depending on operator classes within the family, you will need to
@@ -10,6 +10,6 @@
           <codeph>CASCADE</codeph> to drop such indexes along with the operator family.</p></section><section id="section6"><title>Compatibility</title><p>There is no <codeph>DROP OPERATOR FAMILY</codeph> statement in the SQL standard. </p></section><section id="section7"><title>See Also</title><p><codeph><xref href="ALTER_OPERATOR_FAMILY.xml#topic1" type="topic" format="dita"/></codeph>,
             <codeph><xref href="CREATE_OPERATOR_FAMILY.xml#topic1" type="topic" format="dita"
           /></codeph>, <codeph><xref href="ALTER_OPERATOR_CLASS.xml#topic1" type="topic"
-            format="dita"/></codeph>, <codeph><xref href="CREATE_OPERATOR_CLASS.xml#topic1"
-            type="topic" format="dita"/></codeph>, <codeph><xref
+            format="dita"/></codeph>, <codeph><xref href="CREATE_OPERATOR_CLASS.xml#topic1/bx20941"
+            >CREATE OPERATOR CLASS</xref></codeph>, <codeph><xref
             href="./DROP_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/></codeph></p></section></body></topic>
