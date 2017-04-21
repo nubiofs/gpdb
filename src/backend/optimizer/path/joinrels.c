@@ -157,9 +157,9 @@ join_search_one_level(PlannerInfo *root, int level, List **joinrels)
 			 * participate in join-order restrictions --- then we might have
 			 * to force a bushy join plan.
 			 */
-			if (old_rel->joininfo == NIL && !old_rel->has_eclass_joins &&
-				root->oj_info_list == NIL && !has_join_restriction(root, old_rel))
-				continue;
+//			if (old_rel->joininfo == NIL && !old_rel->has_eclass_joins &&
+//				root->oj_info_list == NIL && !has_join_restriction(root, old_rel))
+//				continue;
 
 			if (k == other_level)
 				other_rels = lnext(r);	/* only consider remaining rels */
@@ -982,15 +982,15 @@ has_join_restriction(PlannerInfo *root, RelOptInfo *rel)
 			return true;
 	}
 
-	foreach(l, root->in_info_list)
-	{
-		InClauseInfo *ininfo = (InClauseInfo *) lfirst(l);
-
-        /* CDB: Consider cross product if subquery RHS = rel + some other rel */
-        if (bms_is_subset(rel->relids, ininfo->righthand) &&
-            !bms_equal(rel->relids, ininfo->righthand))
-			return true;
-	}
+//	foreach(l, root->in_info_list)
+//	{
+//		InClauseInfo *ininfo = (InClauseInfo *) lfirst(l);
+//
+//        /* CDB: Consider cross product if subquery RHS = rel + some other rel */
+//        if (bms_is_subset(rel->relids, ininfo->righthand) &&
+//            !bms_equal(rel->relids, ininfo->righthand))
+//			return true;
+//	}
 
 	return false;
 }

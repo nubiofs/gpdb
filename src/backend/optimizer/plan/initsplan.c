@@ -1330,12 +1330,12 @@ check_outerjoin_delay(PlannerInfo *root,
 	bool		outerjoin_delayed;
 	bool		found_some;
 
-	/* fast path if no outer joins */
-	if (root->oj_info_list == NIL)
-	{
-		*nullable_relids_p = NULL;
-		return false;
-	}
+//	/* fast path if no outer joins */
+//	if (root->oj_info_list == NIL)
+//	{
+//		*nullable_relids_p = NULL;
+//		return false;
+//	}
 
 	/* must copy relids because we need the original value at the end */
 	relids = bms_copy(*relids_p);
@@ -1480,9 +1480,9 @@ check_equivalence_delay(PlannerInfo *root,
 	Relids		relids;
 	Relids		nullable_relids;
 
-	/* fast path if no special joins */
-	if (root->oj_info_list == NIL)
-		return true;
+//	/* fast path if no special joins */
+//	if (root->oj_info_list == NIL)
+//		return true;
 
 	/* must copy restrictinfo's relids to avoid changing it */
 	relids = bms_copy(restrictinfo->left_relids);

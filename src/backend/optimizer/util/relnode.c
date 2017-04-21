@@ -411,11 +411,11 @@ build_join_rel(PlannerInfo *root,
 		*restrictlist_ptr = restrictlist;
 	build_joinrel_joinlist(joinrel, outer_rel, inner_rel);
 
-	/*
-	 * CDB: Attach subquery duplicate suppression info if needed.
-	 */
-	if (root->in_info_list)
-		joinrel->dedup_info = cdb_make_rel_dedup_info(root, joinrel);
+//	/*
+//	 * CDB: Attach subquery duplicate suppression info if needed.
+//	 */
+//	if (root->in_info_list)
+//		joinrel->dedup_info = cdb_make_rel_dedup_info(root, joinrel);
 
 	/*
 	 * This is also the right place to check whether the joinrel has any
@@ -868,7 +868,7 @@ cdb_make_rel_dedup_info(PlannerInfo *root, RelOptInfo *rel)
     InClauseInfo       *join_unique_ininfo;
     bool                partial;
     bool                try_postjoin_dedup;
-    int                 subqueries_unfinished;
+    int                 subqueries_unfinished = 0;
 
     /* Return NULL if rel has no tables from flattened subqueries. */
     if (bms_is_subset(rel->relids, root->currlevel_relids))
@@ -915,35 +915,35 @@ cdb_make_rel_dedup_info(PlannerInfo *root, RelOptInfo *rel)
     join_unique_ininfo = NULL;
     partial = false;
     try_postjoin_dedup = false;
-    subqueries_unfinished = list_length(root->in_info_list);
-    foreach(cell, root->in_info_list)
-    {
-        InClauseInfo   *ininfo = (InClauseInfo *)lfirst(cell);
-
-        /* Got all of the subquery's own tables? */
-        if (bms_is_subset(ininfo->righthand, rel->relids))
-        {
-            /* Early dedup (JOIN_UNIQUE, JOIN_IN) can be applied to this rel. */
-            prejoin_dedup_subqrelids =
-                bms_add_members(prejoin_dedup_subqrelids, ininfo->righthand);
-
-            /* Got all the correlating and left-hand relids too? */
-            if (bms_is_subset(ininfo->righthand, spent_subqrelids))
-            {
-                try_postjoin_dedup = true;
-                subqueries_unfinished--;
-            }
-            else
-                partial = true;
-
-            /* Does rel have exactly the relids of uncorrelated "= ANY" subq? */
-            if (ininfo->try_join_unique &&
-                bms_equal(ininfo->righthand, rel->relids))
-                join_unique_ininfo = ininfo;
-        }
-        else if (bms_overlap(ininfo->righthand, rel->relids))
-            partial = true;
-    }
+//    subqueries_unfinished = list_length(root->in_info_list);
+//    foreach(cell, root->in_info_list)
+//    {
+//        InClauseInfo   *ininfo = (InClauseInfo *)lfirst(cell);
+//
+//        /* Got all of the subquery's own tables? */
+//        if (bms_is_subset(ininfo->righthand, rel->relids))
+//        {
+//            /* Early dedup (JOIN_UNIQUE, JOIN_IN) can be applied to this rel. */
+//            prejoin_dedup_subqrelids =
+//                bms_add_members(prejoin_dedup_subqrelids, ininfo->righthand);
+//
+//            /* Got all the correlating and left-hand relids too? */
+//            if (bms_is_subset(ininfo->righthand, spent_subqrelids))
+//            {
+//                try_postjoin_dedup = true;
+//                subqueries_unfinished--;
+//            }
+//            else
+//                partial = true;
+//
+//            /* Does rel have exactly the relids of uncorrelated "= ANY" subq? */
+//            if (ininfo->try_join_unique &&
+//                bms_equal(ininfo->righthand, rel->relids))
+//                join_unique_ininfo = ininfo;
+//        }
+//        else if (bms_overlap(ininfo->righthand, rel->relids))
+//            partial = true;
+//    }
 
     /* Exit if didn't find anything interesting. */
     if (!spent_subqrelids &&

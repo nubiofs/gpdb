@@ -228,9 +228,9 @@ typedef struct PlannerInfo
 	List	   *join_info_list;		/* list of SpecialJoinInfos */
 	
 	/* 8.4-9.0-MERGE-FIX-ME: Remove oj_info_list and in_info_list*/
-	List	   *oj_info_list;	/* list of OuterJoinInfos */
-
-	List	   *in_info_list;	/* list of InClauseInfos */
+//	List	   *oj_info_list;	/* list of OuterJoinInfos */
+//
+//	List	   *in_info_list;	/* list of InClauseInfos */
 
 	List	   *append_rel_list;	/* list of AppendRelInfos */
 

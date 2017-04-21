@@ -2772,8 +2772,8 @@ static Plan *plan_parallel_window_query(PlannerInfo *root, WindowContext *contex
 	 * since we modify the upper level query, the in_info_list is not valid
 	 * anymore, and needs to be released (MPP-21017)
 	 */
-	list_free(root->in_info_list);
-	root->in_info_list = NIL;
+//	list_free(root->in_info_list);
+//	root->in_info_list = NIL;
 	
 	/* Plan the join.
 	 */

@@ -1025,8 +1025,8 @@ convert_EXISTS_to_join(PlannerInfo *root, List **rtrlist_inout, SubLink *sublink
 	rtindex = list_length(root->parse->rtable) + 1;
 	ininfo->righthand = bms_make_singleton(rtindex);
 
-	/* Tell join planner to quell duplication of outer query result rows. */
-	root->in_info_list = lappend(root->in_info_list, ininfo);
+//	/* Tell join planner to quell duplication of outer query result rows. */
+//	root->in_info_list = lappend(root->in_info_list, ininfo);
 
 	/* Make a subquery RTE in the current query level. */
 	rte = addRangeTableEntryForSubquery(NULL,

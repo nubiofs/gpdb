@@ -5048,7 +5048,7 @@ flatten_join_alias_var_optimizer(Query *query, int queryLevel)
 	root->init_plans = NIL;
 
 	root->list_cteplaninfo = NIL;
-	root->in_info_list = NIL;
+//	root->in_info_list = NIL;
 	root->append_rel_list = NIL;
 
 	root->hasJoinRTEs = false;

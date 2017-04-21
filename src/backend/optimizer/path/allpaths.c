@@ -288,9 +288,9 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	if (create_or_index_quals(root, rel))
 		set_baserel_size_estimates(root, rel);
 
-	/* CDB: Attach subquery duplicate suppression info. */
-	if (root->in_info_list)
-		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
+//	/* CDB: Attach subquery duplicate suppression info. */
+//	if (root->in_info_list)
+//		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
 
 	/*
 	 * Generate paths and add them to the rel's pathlist.
@@ -722,9 +722,9 @@ set_subquery_pathlist(PlannerInfo *root, RelOptInfo *rel,
 	else
 		rel->tuples = rel->subplan->plan_rows;
 
-	/* CDB: Attach subquery duplicate suppression info. */
-	if (root->in_info_list)
-		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
+//	/* CDB: Attach subquery duplicate suppression info. */
+//	if (root->in_info_list)
+//		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
 
 	/* Mark rel with estimated output rows, width, etc */
 	set_baserel_size_estimates(root, rel);
@@ -755,9 +755,9 @@ set_function_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	/* CDB: Could the function return more than one row? */
 	rel->onerow = !expression_returns_set(rte->funcexpr);
 
-	/* CDB: Attach subquery duplicate suppression info. */
-	if (root->in_info_list)
-		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
+//	/* CDB: Attach subquery duplicate suppression info. */
+//	if (root->in_info_list)
+//		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
 
 	/* Mark rel with estimated output rows, width, etc */
 	set_function_size_estimates(root, rel);
@@ -810,9 +810,9 @@ set_tablefunction_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rt
 	/* Could the function return more than one row? */
 	rel->onerow = !expression_returns_set(rte->funcexpr);
 
-	/* Attach subquery duplicate suppression info. */
-	if (root->in_info_list)
-		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
+//	/* Attach subquery duplicate suppression info. */
+//	if (root->in_info_list)
+//		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
 
 	/* Mark rel with estimated output rows, width, etc */
 	set_table_function_size_estimates(root, rel);
@@ -838,9 +838,9 @@ set_values_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	rel->onerow = (rel->tuples <= 1 &&
 				   !expression_returns_set((Node *) rte->values_lists));
 
-	/* CDB: Attach subquery duplicate suppression info. */
-	if (root->in_info_list)
-		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
+//	/* CDB: Attach subquery duplicate suppression info. */
+//	if (root->in_info_list)
+//		rel->dedup_info = cdb_make_rel_dedup_info(root, rel);
 
 	/* Generate appropriate path */
 	add_path(root, rel, create_valuesscan_path(root, rel, rte));
