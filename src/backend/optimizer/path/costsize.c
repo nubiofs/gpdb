@@ -2913,10 +2913,10 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 //			Do we ever come here for JOIN_SEMI, there was no handling for JOIN_IN,
 //			so may be we don't need it here
 //			break;
-//		case JOIN_SEMI:
-//			/* XXX this is unsafe, could Assert? */
-//			// 8.4-9.0-MERGE-FIX-ME
-//			// Finalize the args for create_unique_path
+		case JOIN_SEMI:
+			/* XXX this is unsafe, could Assert? */
+			// 8.4-9.0-MERGE-FIX-ME
+			// Finalize the args for create_unique_path
 //			upath = create_unique_path(root, inner_rel, NIL, NIL,
 //									   inner_rel->cheapest_total_path,
 //									   sjinfo);
@@ -2925,9 +2925,10 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 //				nrows = outer_rel->rows * upath->rows * jselec;
 //			else
 //				nrows = outer_rel->rows * inner_rel->rows * jselec;
-//			if (nrows > outer_rel->rows)
+			nrows = outer_rel->rows * inner_rel->rows * jselec;
+//			if (nrows < outer_rel->rows)
 //				nrows = outer_rel->rows;
-//			break;
+			break;
 		case JOIN_ANTI:
 			/* XXX this is utterly wrong */
 			nrows = outer_rel->rows * inner_rel->rows * jselec;

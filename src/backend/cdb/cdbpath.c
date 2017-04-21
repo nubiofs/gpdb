@@ -807,9 +807,11 @@ cdbpath_motion_for_join(PlannerInfo    *root,
         case JOIN_LEFT:
         case JOIN_LASJ:
         case JOIN_LASJ_NOTIN:
+		case JOIN_UNIQUE_OUTER:
             outer.ok_to_replicate = false;
             break;
         case JOIN_RIGHT:
+		case JOIN_UNIQUE_INNER:
             inner.ok_to_replicate = false;
             break;
         case JOIN_FULL:

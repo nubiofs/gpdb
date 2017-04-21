@@ -674,15 +674,15 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 			/*if (bms_equal(sjinfo->syn_righthand, rel2->relids) &&
 				create_unique_path(root, rel2, NIL, NIL, rel2->cheapest_total_path,
 								   sjinfo) != NULL)*/
-			if (bms_equal(sjinfo->syn_righthand, rel2->relids) && NULL)
-			{
+//			if (bms_equal(sjinfo->syn_righthand, rel2->relids) && NULL)
+//			{
 				add_paths_to_joinrel(root, joinrel, rel1, rel2,
 									 JOIN_UNIQUE_INNER, sjinfo,
 									 restrictlist);
 				add_paths_to_joinrel(root, joinrel, rel2, rel1,
 									 JOIN_UNIQUE_OUTER, sjinfo,
 									 restrictlist);
-			}
+//			}
 			break;
 		case JOIN_ANTI:
 			if (is_dummy_rel(rel1))
