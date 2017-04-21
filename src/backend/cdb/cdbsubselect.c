@@ -111,9 +111,7 @@ cdbsubselect_flatten_sublinks(struct PlannerInfo *root, struct Node *jtnode)
 					cdbsubselect_flatten_sublinks(root, (Node *) lfirst(cell));
 
 				/* Flatten sublinks in WHERE search condition. */
-				// 8.4-9.0-MERGE-FIX-ME: pull_up_IN_clauses is replaced by pull_up_subqueries
-				// which has a different args set
-				fromexpr->quals = pull_up_IN_clauses(root, &rtrlist, fromexpr->quals);
+				fromexpr->quals = pull_up_sublinks(root, &rtrlist, fromexpr->quals);
 
 				/* Append any new RangeTblRef nodes to the FROM clause. */
 				if (rtrlist)
@@ -137,7 +135,7 @@ cdbsubselect_flatten_sublinks(struct PlannerInfo *root, struct Node *jtnode)
 				cdbsubselect_flatten_sublinks(root, joinexpr->rarg);
 
 				/* Flatten sublinks in JOIN...ON search condition. */
-				joinexpr->quals = pull_up_IN_clauses(root, &rtrlist, joinexpr->quals);
+				joinexpr->quals = pull_up_sublinks(root, &rtrlist, joinexpr->quals);
 
 				/* Add any new RangeTblRef nodes to the join. */
 				joinexpr->subqfromlist = rtrlist;
@@ -1087,9 +1085,6 @@ convert_sublink_to_join(PlannerInfo *root, List **rtrlist_inout, SubLink *sublin
 			break;
 
 		case ANY_SUBLINK:
-			//8.4-9.0-MERGE-FIX-ME: convert_IN_to_join has been removed in commit:
-			// e006a24a. It has been replaced by convert_ANY_sublink_to_join
-			//result = convert_IN_to_join(root, rtrlist_inout, sublink);
 			result = convert_ANY_sublink_to_join(root, sublink);
 			break;
 

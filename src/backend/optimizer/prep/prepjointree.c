@@ -100,65 +100,126 @@ extern void UpdateScatterClause(Query *query, List *newtlist);
  * There may be side-effects on the query's rtable and jointree, too.
  */
 Node *
-pull_up_sublinks(PlannerInfo *root, Node *node)
+pull_up_sublinks(PlannerInfo * root, List **rtrlist_inout, Node *node)
 {
-	if (node == NULL)
-		return NULL;
-	if (IsA(node, SubLink))
-	{
-		SubLink    *sublink = (SubLink *) node;
-		Node	   *subst;
+    if (node == NULL)
+        return NULL;
+    if (IsA(node, SubLink))
+    {
+        SubLink    *sublink = (SubLink *) node;
+        Node	   *subst;
 
-		/* Is it a convertible ANY or EXISTS clause? */
-		if (sublink->subLinkType == ANY_SUBLINK)
-		{
-			subst = convert_ANY_sublink_to_join(root, sublink);
-			if (subst)
-				return subst;
-		}
-		else if (sublink->subLinkType == EXISTS_SUBLINK)
-		{
-			subst = convert_EXISTS_sublink_to_join(root, sublink, false);
-			if (subst)
-				return subst;
-		}
-		/* Else return it unmodified */
-		return node;
-	}
-	if (not_clause(node))
-	{
-		/* If the immediate argument of NOT is EXISTS, try to convert */
-		SubLink    *sublink = (SubLink *) get_notclausearg((Expr *) node);
-		Node	   *subst;
+        /* Is it a convertible ANY or EXISTS clause? */
+        if (sublink->subLinkType == ANY_SUBLINK)
+        {
+            subst = convert_ANY_sublink_to_join(root, sublink);
+            if (subst)
+                return subst;
+        }
+        else if (sublink->subLinkType == EXISTS_SUBLINK)
+        {
+            subst = convert_EXISTS_sublink_to_join(root, sublink, false);
+            if (subst)
+                return subst;
+        }
+        /* Else return it unmodified */
+        return node;
+    }
+    if (and_clause(node))
+    {
+        List	   *newclauses = NIL;
+        ListCell   *l;
 
-		if (sublink && IsA(sublink, SubLink))
-		{
-			if (sublink->subLinkType == EXISTS_SUBLINK)
-			{
-				subst = convert_EXISTS_sublink_to_join(root, sublink, true);
-				if (subst)
-					return subst;
-			}
-		}
-		/* Else return it unmodified */
-		return node;
-	}
-	if (and_clause(node))
-	{
-		List	   *newclauses = NIL;
-		ListCell   *l;
+        foreach(l, ((BoolExpr *) node)->args)
+        {
+            Node	   *oldclause = (Node *) lfirst(l);
+            Node	   *newclause = pull_up_sublinks(root, rtrlist_inout, oldclause);
 
-		foreach(l, ((BoolExpr *) node)->args)
-		{
-			Node	   *oldclause = (Node *) lfirst(l);
+            if (newclause)
+                newclauses = lappend(newclauses, newclause);
+        }
+        return (Node *) make_ands_explicit(newclauses);
+    }
+    if (not_clause(node))
+    {
 
-			newclauses = lappend(newclauses,
-								 pull_up_sublinks(root, oldclause));
-		}
-		return (Node *) make_andclause(newclauses);
-	}
-	/* Stop if not an AND */
-	return node;
+        Node	   *arg = (Node *) get_notclausearg((Expr *) node);
+        /* If the immediate argument of NOT is EXISTS, try to convert */
+        SubLink    *sublink = (SubLink *) get_notclausearg((Expr *) node);
+        Node	   *subst;
+
+        if (sublink && IsA(sublink, SubLink))
+        {
+            if (sublink->subLinkType == EXISTS_SUBLINK)
+            {
+                subst = convert_EXISTS_sublink_to_join(root, sublink, true);
+                if (subst)
+                    return subst;
+            }
+                /*
+                 *	 We normalize NOT subqueries using the following axioms:
+                 *
+                 *		 val NOT IN (subq)		 =>  val <> ALL (subq)
+                 *		 NOT val op ANY (subq)	 =>  val op' ALL (subq)
+                 *		 NOT val op ALL (subq)	 =>  val op' ANY (subq)
+                 */
+            else if (sublink->subLinkType == ANY_SUBLINK)
+            {
+                sublink->subLinkType = ALL_SUBLINK;
+                sublink->testexpr = (Node *) canonicalize_qual(
+                        make_notclause((Expr *) sublink->testexpr));
+            }
+            else if (sublink->subLinkType == ALL_SUBLINK)
+            {
+                sublink->subLinkType = ANY_SUBLINK;
+                sublink->testexpr = (Node *) canonicalize_qual(
+                        make_notclause((Expr *) sublink->testexpr));
+            }
+            else
+            {
+                return node;
+            }
+            return pull_up_sublinks(root, rtrlist_inout, (Node *) sublink);
+        }
+        else if (not_clause(arg))
+        {
+            /* NOT NOT (expr) => (expr)  */
+            return (Node *) pull_up_sublinks(root, rtrlist_inout,
+                                               (Node *) get_notclausearg((Expr *) arg));
+        }
+        else if (or_clause(arg))
+        {
+            /* NOT OR (expr1) (expr2) => (expr1) AND (expr2) */
+            return (Node *) pull_up_sublinks(root, rtrlist_inout,
+                                               (Node *) canonicalize_qual((Expr *) node));
+
+        }
+        /* Else return it unmodified */
+        return node;
+    }
+
+    /**
+     * (expr) op SUBLINK
+     */
+    if (IsA(node, OpExpr))
+    {
+        OpExpr *opexp = (OpExpr *) node;
+
+        if (list_length(opexp->args) == 2)
+        {
+            /**
+             * Check if second arg is sublink
+             */
+            Node *rarg = list_nth(opexp->args, 1);
+
+            if (IsA(rarg, SubLink))
+            {
+                return (Node *) convert_EXPR_to_join(root, rtrlist_inout, opexp);
+            }
+        }
+    }
+    /* Stop if not an AND */
+    return node;
 }
 
 // 8.4-9.0-MERGE-FIX-ME: Port any GPDB specific funcationality from
@@ -523,10 +584,7 @@ pull_up_simple_subquery(PlannerInfo *root, Node *jtnode, RangeTblEntry *rte,
 	 * leave unoptimized SubLinks behind.
 	 */
 	if (subquery->hasSubLinks)
-		subquery->jointree->quals = pull_up_sublinks(subroot,
-													 subquery->jointree->quals);
-        //8.4-9.0-MERGE-FIX-ME: Is there anything specifc we do in cdbsubselect_flatten_sublinks
-		// cdbsubselect_flatten_sublinks(subroot, (Node *)subquery);
+        cdbsubselect_flatten_sublinks(subroot, (Node *)subquery);
 
 	/*
 	 * Recursively pull up the subquery's subqueries, so that
