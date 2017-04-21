@@ -2811,7 +2811,6 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 	Selectivity pselec;
 	double		nrows;
 	double		adjnrows;
-//	UniquePath  *upath;
 
 	/*
 	 * Compute joinclause selectivity.	Note that we are only considering
@@ -2910,24 +2909,23 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 				nrows = inner_rel->rows;
 			nrows *= pselec;
 			break;
-//			Do we ever come here for JOIN_SEMI, there was no handling for JOIN_IN,
-//			so may be we don't need it here
-//			break;
-//		case JOIN_SEMI:
-//			/* XXX this is unsafe, could Assert? */
-//			// 8.4-9.0-MERGE-FIX-ME
-//			// Finalize the args for create_unique_path
-//			upath = create_unique_path(root, inner_rel, NIL, NIL,
+// 8.4-9.0-MERGE-FIX-ME:
+//			Do we ever come here for JOIN_SEMI, there was no handling for JOIN_IN here in GPDB,
+//			so may be we don't need it here. Corresponding upstream commit: e006a24a
+		case JOIN_SEMI:
+			/* XXX this is unsafe, could Assert? */
+//			UniquePath  *upath;
+//			upath = create_unique_path(root, inner_rel,
 //									   inner_rel->cheapest_total_path,
 //									   sjinfo);
-//			upath = NULL;
 //			if (upath)
 //				nrows = outer_rel->rows * upath->rows * jselec;
 //			else
 //				nrows = outer_rel->rows * inner_rel->rows * jselec;
-//			if (nrows > outer_rel->rows)
-//				nrows = outer_rel->rows;
-//			break;
+			nrows = outer_rel->rows * inner_rel->rows * jselec;
+			if (nrows > outer_rel->rows)
+				nrows = outer_rel->rows;
+			break;
 		case JOIN_ANTI:
 			/* XXX this is utterly wrong */
 			nrows = outer_rel->rows * inner_rel->rows * jselec;
@@ -2976,7 +2974,6 @@ static Selectivity
 join_in_selectivity(JoinPath *path, PlannerInfo *root, SpecialJoinInfo *sjinfo)
 {
 	RelOptInfo *innerrel;
-//	UniquePath *innerunique;
 	Selectivity selec;
 	double		nrows;
 
@@ -2995,13 +2992,14 @@ join_in_selectivity(JoinPath *path, PlannerInfo *root, SpecialJoinInfo *sjinfo)
 	if (IsA(path->innerjoinpath, UniquePath))
 		return 1.0;
 	innerrel = path->innerjoinpath->parent;
+
+	// 8.4-9.0-MERGE-FIX-ME: Do we need to derive innerunique here as in upstream?
 	/* XXX might assert if sjinfo doesn't exactly match innerrel? */
-	// 8.4-9.0-MERGE-FIX-ME: Derive corrects args for create_unqiue_path
-//	innerunique = create_unique_path(root,
-//									 innerrel, NIL, NIL,
-//									 innerrel->cheapest_total_path,
-//									 sjinfo);
-//	innerunique = NULL;
+	//	innerunique = create_unique_path(root,
+	//									 innerrel, NIL, NIL,
+	//									 innerrel->cheapest_total_path,
+	//									 sjinfo);
+	// if (innerunique && innerunique->rows >= innerrel->rows)
 	if (innerrel->onerow)
 		return 1.0;
 

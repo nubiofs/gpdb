@@ -229,6 +229,8 @@ sort_inner_and_outer(PlannerInfo *root,
 		case JOIN_ANTI:
 		case JOIN_LASJ:
 		case JOIN_LASJ_NOTIN:
+		case JOIN_UNIQUE_OUTER:
+		case JOIN_UNIQUE_INNER:
 			useallclauses = false;
 			break;
 		case JOIN_RIGHT:
@@ -415,6 +417,12 @@ match_unsorted_outer(PlannerInfo *root,
 		case JOIN_FULL:
 			nestjoinOK = false;
 			useallclauses = true;
+			break;
+		case JOIN_UNIQUE_OUTER:
+		case JOIN_UNIQUE_INNER:
+			jointype = JOIN_INNER;
+			nestjoinOK = true;
+			useallclauses = false;
 			break;
 		default:
 			elog(ERROR, "unrecognized join type: %d",

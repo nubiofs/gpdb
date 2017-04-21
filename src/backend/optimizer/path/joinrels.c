@@ -664,25 +664,25 @@ make_join_rel(PlannerInfo *root, RelOptInfo *rel1, RelOptInfo *rel2)
 			add_paths_to_joinrel(root, joinrel, rel1, rel2,
 								 JOIN_SEMI, sjinfo,
 								 restrictlist);
-			
+
+//			8.4-9.0-MERGE-FIX-ME: Upstream commit: e006a24a
+//			Do we need to add the condition to check if the relids are same
+//			and the unique path is not NULL. In GPDB, JOIN_IN did not had these
+//			condition and was essentially similar to JOIN_SEMI
+//			if (bms_equal(sjinfo->syn_righthand, rel2->relids) &&
+//				create_unique_path(root, rel2, rel2->cheapest_total_path,
+//								   sjinfo) != NULL)
 			/*
 			 * If we know how to unique-ify the RHS and one input rel is
 			 * exactly the RHS (not a superset) we can consider unique-ifying
 			 * it and then doing a regular join.
 			 */
-			// 8.4-9.0-MERGE-FIX-ME: Derive the params for create_unique_path
-			/*if (bms_equal(sjinfo->syn_righthand, rel2->relids) &&
-				create_unique_path(root, rel2, NIL, NIL, rel2->cheapest_total_path,
-								   sjinfo) != NULL)*/
-			if (bms_equal(sjinfo->syn_righthand, rel2->relids) && NULL)
-			{
-				add_paths_to_joinrel(root, joinrel, rel1, rel2,
-									 JOIN_UNIQUE_INNER, sjinfo,
-									 restrictlist);
-				add_paths_to_joinrel(root, joinrel, rel2, rel1,
-									 JOIN_UNIQUE_OUTER, sjinfo,
-									 restrictlist);
-			}
+			add_paths_to_joinrel(root, joinrel, rel1, rel2,
+								 JOIN_UNIQUE_INNER, sjinfo,
+								 restrictlist);
+			add_paths_to_joinrel(root, joinrel, rel2, rel1,
+								 JOIN_UNIQUE_OUTER, sjinfo,
+								 restrictlist);
 			break;
 		case JOIN_ANTI:
 			if (is_dummy_rel(rel1))

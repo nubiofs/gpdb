@@ -855,10 +855,10 @@ create_unique_plan(PlannerInfo *root, UniquePath *best_path)
 	 * unless we are sorting or stuff has to be added.
 	 */
 	// 8.4-9.0_MERGE-FIX-ME: Should we retain the CDB ones below?
-//	uniq_exprs = best_path->distinct_on_exprs;	/* CDB */
-//	in_operators = best_path->distinct_on_eq_operators; /* CDB */
-	in_operators = best_path->in_operators;
-	uniq_exprs = best_path->uniq_exprs;
+	uniq_exprs = best_path->distinct_on_exprs;	/* CDB */
+	in_operators = best_path->distinct_on_eq_operators; /* CDB */
+//	in_operators = best_path->in_operators;
+//	uniq_exprs = best_path->uniq_exprs;
 
 	/* initialize modified subplan tlist as just the "required" vars */
 	newtlist = build_relation_tlist(best_path->path.parent);
