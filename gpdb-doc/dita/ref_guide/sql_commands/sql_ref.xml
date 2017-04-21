@@ -229,10 +229,7 @@
       <li id="ad140650">
         <xref href="./DROP_OPERATOR.xml#topic1" type="topic" format="dita"/>
       </li>
-      <li id="ad140654">
-        <abbreviated-form keyref=""
-          ><!--<xref href="./DROP_OPERATOR_CLASS.xml#topic1" type="topic" format="dita"/>--></abbreviated-form>
-      </li>
+      <li><xref href="DROP_OPERATOR_CLASS.xml#topic1/da20941">DROP_OPERATOR_CLASS</xref></li>
       <li><xref href="DROP_OPERATOR_FAMILY.xml#topic1/da20941">DROP OPERATOR FAMILY</xref></li>
       <li id="ad140658">
         <xref href="./DROP_OWNED.xml#topic1" type="topic" format="dita"/>

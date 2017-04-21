@@ -93,6 +93,7 @@
 		<topicref href="ref_guide/sql_commands/ALTER_TABLESPACE.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_TRIGGER.xml" otherprops="op-hidden"/>
 		<topicref href="ref_guide/sql_commands/ALTER_TYPE.xml"/>
+		<topicref href="ref_guide/sql_commands/ALTER_USER.xml"/>
 		<topicref href="ref_guide/sql_commands/ALTER_VIEW.xml"/>
 		<topicref href="ref_guide/sql_commands/ANALYZE.xml"/>
 		<topicref href="ref_guide/sql_commands/BEGIN.xml"/>
