@@ -318,5 +318,4 @@
 		navtitle="Greenplum Fuzzy String Match Extension" id="fuzzystrmatch"/>
 	<chapter href="ref_guide/feature_summary.xml" navtitle="Summary of Greenplum Features"
 		id="feature_summary"/>
-	<chapter href="ref_guide/sql_commands/ALTER_OPERATOR_FAMILY.xml"/>
 </bookmap>
