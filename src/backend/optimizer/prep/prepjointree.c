@@ -117,10 +117,10 @@ pull_up_sublinks(PlannerInfo * root, List **rtrlist_inout, Node *node)
                 return subst;
         }
         else if (sublink->subLinkType == EXISTS_SUBLINK)
-        {
-            subst = convert_EXISTS_sublink_to_join(root, sublink, false);
-            if (subst)
-                return subst;
+			{
+				subst = convert_EXISTS_sublink_to_join(root, sublink, false);
+				if (subst)
+					return subst;
         }
         /* Else return it unmodified */
         return node;
