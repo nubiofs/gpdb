@@ -2910,9 +2910,6 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 				nrows = inner_rel->rows;
 			nrows *= pselec;
 			break;
-//			Do we ever come here for JOIN_SEMI, there was no handling for JOIN_IN,
-//			so may be we don't need it here
-//			break;
 		case JOIN_SEMI:
 			/* XXX this is unsafe, could Assert? */
 			// 8.4-9.0-MERGE-FIX-ME
@@ -2926,8 +2923,6 @@ set_joinrel_size_estimates(PlannerInfo *root, RelOptInfo *rel,
 //			else
 //				nrows = outer_rel->rows * inner_rel->rows * jselec;
 			nrows = outer_rel->rows * inner_rel->rows * jselec;
-//			if (nrows < outer_rel->rows)
-//				nrows = outer_rel->rows;
 			break;
 		case JOIN_ANTI:
 			/* XXX this is utterly wrong */
