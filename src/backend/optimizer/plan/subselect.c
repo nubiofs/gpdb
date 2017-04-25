@@ -40,6 +40,7 @@
 #include "cdb/cdbsubselect.h"
 #include "cdb/cdbvars.h"
 
+extern bool is_simple_subquery(PlannerInfo *root, Query *subquery);
 
 typedef struct convert_testexpr_context
 {
@@ -371,8 +372,9 @@ make_subplan(PlannerInfo *root, Query *orig_subquery, SubLinkType subLinkType,
 	/*
  	 * If it's an EXISTS subplan, we might be able to simplify it.
  	 */
-	if (subLinkType == EXISTS_SUBLINK)
-		(void) simplify_EXISTS_query(subquery);
+	// 8.4-9.0-MERGE-FIX-ME: Do we need this check here?
+	//if (subLinkType == EXISTS_SUBLINK)
+	//	(void) simplify_EXISTS_query(subquery);
 	/*
 	 * For an EXISTS subplan, tell lower-level planner to expect that only the
 	 * first tuple will be retrieved.  For ALL and ANY subplans, we will be
@@ -1102,7 +1104,9 @@ convert_EXISTS_sublink_to_join(PlannerInfo *root, SubLink *sublink,
 	 * targetlist, we have to fail, because the pullup operation leaves
 	 * us with noplace to evaluate the targetlist.
 	 */
-	if (!simplify_EXISTS_query(subselect))
+	//8.4-9.0-MERGE-FIX-ME: Equivalent function simplify_EXISTS_query commit e006a24a
+	//does not handle CTEs and converts EXISTS to join
+	if (!is_simple_subquery(root, subselect))
 		return NULL;
 
 	/*

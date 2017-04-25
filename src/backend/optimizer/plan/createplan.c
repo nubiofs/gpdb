@@ -184,9 +184,9 @@ create_plan(PlannerInfo *root, Path *path)
 {
 	Plan	   *plan;
 
-//	/* Modify path to support unique rowid operation for subquery preds. */
-//	if (root->in_info_list)
-//		cdbpath_dedup_fixup(root, path);
+	/* Modify path to support unique rowid operation for subquery preds. */
+	if (root->join_info_list)
+		cdbpath_dedup_fixup(root, path);
 
 	/* Generate the Plan tree. */
 	plan = create_subplan(root, path);

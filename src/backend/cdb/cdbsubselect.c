@@ -28,8 +28,6 @@
 #include "lib/stringinfo.h"
 #include "cdb/cdbpullup.h"
 
-extern bool is_simple_subquery(PlannerInfo *root, Query *subquery);
-
 static Node *convert_IN_to_antijoin(PlannerInfo *root, List **rtrlist_inout, SubLink *sublink);
 
 static int	add_expr_subquery_rte(Query *parse, Query *subselect);
@@ -765,7 +763,8 @@ convert_EXPR_to_join(PlannerInfo *root, List **rtrlist_inout, OpExpr *opexp)
 /**
  * convert_NOT_EXISTS_to_antijoin
  */
-static Node *
+//static Node *
+Node *
 convert_NOT_EXISTS_to_antijoin(PlannerInfo *root, List **rtrlist_inout, SubLink *sublink)
 {
 	Assert(root);
@@ -880,168 +879,171 @@ convert_NOT_EXISTS_to_antijoin(PlannerInfo *root, List **rtrlist_inout, SubLink 
 	return (Node *) make_notclause((Expr *) sublink);
 }
 
+
+// 8.4-9.0-MERGE-FIX_ME: We no longer need this function.
+// The equivalent function is convert_EXISTS_sublink_to_join
 /*
  * convert_EXISTS_to_join
  */
-static Node *
-convert_EXISTS_to_join(PlannerInfo *root, List **rtrlist_inout, SubLink *sublink)
-{
-	Query	   *subselect = (Query *) sublink->subselect;
-	Node	   *limitqual = NULL;
-	Node	   *lnode;
-	Node	   *rnode;
-	Node	   *node;
-	InClauseInfo *ininfo;
-	RangeTblEntry *rte;
-	RangeTblRef *rtr;
-	int			rtindex;
-
-	Assert(IsA(subselect, Query));
-
-	if (subselect->jointree->fromlist == NULL)
-		return (Node *) sublink;
-
-	if (has_correlation_in_funcexpr_rte(subselect->rtable))
-		return (Node *) sublink;
-
-	/*
-	 * If deeply correlated, don't bother.
-	 */
-	if (IsSubqueryMultiLevelCorrelated(subselect))
-		return (Node *) sublink;
-
-	/*
-	* Don't remove the sublink if we cannot pull-up the subquery
-	* later during pull_up_simple_subquery()
-	*/
-	if (!is_simple_subquery(root, subselect))
-	{
-		   return (Node *) sublink;
-	}
-
-	/*
-	 * 'LIMIT n' makes EXISTS false when n <= 0, and doesn't affect the
-	 * outcome when n > 0.  Delete subquery's LIMIT and build (0 < n) expr to
-	 * be ANDed into the parent qual.
-	 */
-	if (subselect->limitCount)
-	{
-		rnode = copyObject(subselect->limitCount);
-		IncrementVarSublevelsUp(rnode, -1, 1);
-		lnode = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(0),
-								   false, true);
-		limitqual = (Node *) make_op(NULL, list_make1(makeString("<")),
-									 lnode, rnode, -1);
-		subselect->limitCount = NULL;
-	}
-
-	/* CDB TODO: Set-returning function in tlist could return empty set. */
-	if (expression_returns_set((Node *) subselect->targetList))
-		ereport(ERROR, (errcode(ERRCODE_GP_FEATURE_NOT_YET),
-						errmsg("Set-returning function in EXISTS subquery: not yet implemented")
-						));
-
-	/*
-	 * Trivial EXISTS subquery can be eliminated altogether.  If subquery has
-	 * aggregates without GROUP BY or HAVING, its result is exactly one row
-	 * (assuming no errors), unless that row is discarded by LIMIT/OFFSET.
-	 */
-	if (subselect->hasAggs &&
-		subselect->groupClause == NIL &&
-		subselect->havingQual == NULL)
-	{
-		/*
-		 * 'OFFSET m' falsifies EXISTS for m >= 1, and doesn't affect the
-		 * outcome for m < 1, given that the subquery yields at most one row.
-		 * Delete subquery's OFFSET and build (m < 1) expr to be anded with
-		 * the current query's WHERE clause.
-		 */
-		if (subselect->limitOffset)
-		{
-			lnode = copyObject(subselect->limitOffset);
-			IncrementVarSublevelsUp(lnode, -1, 1);
-			rnode = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(1),
-									   false, true);
-			node = (Node *) make_op(NULL, list_make1(makeString("<")),
-									lnode, rnode, -1);
-			limitqual = make_and_qual(limitqual, node);
-		}
-
-		/* Replace trivial EXISTS(...) with TRUE if no LIMIT/OFFSET. */
-		if (limitqual == NULL)
-			limitqual = makeBoolConst(true, false);
-
-		return limitqual;
-	}
-
-	/* Delete ORDER BY and DISTINCT. */
-	subselect->sortClause = NIL;
-	subselect->distinctClause = NIL;
-
-	/*
-	 * HAVING is the only place that could still contain aggregates. We can
-	 * delete targetlist if there is no havingQual.
-	 */
-	if (subselect->havingQual == NULL)
-	{
-		subselect->targetList = NULL;
-		subselect->hasAggs = false;
-	}
-
-	/* If HAVING has no aggregates, demote it to WHERE. */
-	else if (!checkExprHasAggs(subselect->havingQual))
-	{
-		subselect->jointree->quals = make_and_qual(subselect->jointree->quals,
-												   subselect->havingQual);
-		subselect->havingQual = NULL;
-		subselect->hasAggs = false;
-	}
-
-	/* Delete GROUP BY if no aggregates. */
-	if (!subselect->hasAggs)
-		subselect->groupClause = NIL;
-
-	/*
-	 * If uncorrelated, the subquery will be executed only once.  Add LIMIT 1
-	 * and let the SubLink remain unflattened.  It will become an InitPlan.
-	 * (CDB TODO: Would it be better to go ahead and convert these to joins?)
-	 */
-	if (!contain_vars_of_level_or_above(sublink->subselect, 1))
-	{
-		subselect->limitCount = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(1),
-												   false, true);
-		return make_and_qual(limitqual, (Node *) sublink);
-	}
-
-	/*
-	 * Build subquery RTE, InClauseInfo, etc.
-	 */
-
-	/* Build an InClauseInfo struct. */
-	ininfo = makeNode(InClauseInfo);
-	ininfo->sub_targetlist = NULL;
-
-	/* Determine the index of the subquery RTE that we'll create below. */
-	rtindex = list_length(root->parse->rtable) + 1;
-	ininfo->righthand = bms_make_singleton(rtindex);
-
-//	/* Tell join planner to quell duplication of outer query result rows. */
-//	root->in_info_list = lappend(root->in_info_list, ininfo);
-
-	/* Make a subquery RTE in the current query level. */
-	rte = addRangeTableEntryForSubquery(NULL,
-										subselect,
-										makeAlias("EXISTS_subquery", NIL),
-										false);
-	root->parse->rtable = lappend(root->parse->rtable, rte);
-
-	/* Tell caller to augment the jointree with a reference to the new RTE. */
-	rtr = makeNode(RangeTblRef);
-	rtr->rtindex = rtindex;
-	*rtrlist_inout = lappend(*rtrlist_inout, rtr);
-
-	return limitqual;
-}	/* convert_EXISTS_to_join */
+//static Node *
+//convert_EXISTS_to_join(PlannerInfo *root, List **rtrlist_inout, SubLink *sublink)
+//{
+//	Query	   *subselect = (Query *) sublink->subselect;
+//	Node	   *limitqual = NULL;
+//	Node	   *lnode;
+//	Node	   *rnode;
+//	Node	   *node;
+//	InClauseInfo *ininfo;
+//	RangeTblEntry *rte;
+//	RangeTblRef *rtr;
+//	int			rtindex;
+//
+//	Assert(IsA(subselect, Query));
+//
+//	if (subselect->jointree->fromlist == NULL)
+//		return (Node *) sublink;
+//
+//	if (has_correlation_in_funcexpr_rte(subselect->rtable))
+//		return (Node *) sublink;
+//
+//	/*
+//	 * If deeply correlated, don't bother.
+//	 */
+//	if (IsSubqueryMultiLevelCorrelated(subselect))
+//		return (Node *) sublink;
+//
+//	/*
+//	* Don't remove the sublink if we cannot pull-up the subquery
+//	* later during pull_up_simple_subquery()
+//	*/
+//	if (!is_simple_subquery(root, subselect))
+//	{
+//		   return (Node *) sublink;
+//	}
+//
+//	/*
+//	 * 'LIMIT n' makes EXISTS false when n <= 0, and doesn't affect the
+//	 * outcome when n > 0.  Delete subquery's LIMIT and build (0 < n) expr to
+//	 * be ANDed into the parent qual.
+//	 */
+//	if (subselect->limitCount)
+//	{
+//		rnode = copyObject(subselect->limitCount);
+//		IncrementVarSublevelsUp(rnode, -1, 1);
+//		lnode = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(0),
+//								   false, true);
+//		limitqual = (Node *) make_op(NULL, list_make1(makeString("<")),
+//									 lnode, rnode, -1);
+//		subselect->limitCount = NULL;
+//	}
+//
+//	/* CDB TODO: Set-returning function in tlist could return empty set. */
+//	if (expression_returns_set((Node *) subselect->targetList))
+//		ereport(ERROR, (errcode(ERRCODE_GP_FEATURE_NOT_YET),
+//						errmsg("Set-returning function in EXISTS subquery: not yet implemented")
+//						));
+//
+//	/*
+//	 * Trivial EXISTS subquery can be eliminated altogether.  If subquery has
+//	 * aggregates without GROUP BY or HAVING, its result is exactly one row
+//	 * (assuming no errors), unless that row is discarded by LIMIT/OFFSET.
+//	 */
+//	if (subselect->hasAggs &&
+//		subselect->groupClause == NIL &&
+//		subselect->havingQual == NULL)
+//	{
+//		/*
+//		 * 'OFFSET m' falsifies EXISTS for m >= 1, and doesn't affect the
+//		 * outcome for m < 1, given that the subquery yields at most one row.
+//		 * Delete subquery's OFFSET and build (m < 1) expr to be anded with
+//		 * the current query's WHERE clause.
+//		 */
+//		if (subselect->limitOffset)
+//		{
+//			lnode = copyObject(subselect->limitOffset);
+//			IncrementVarSublevelsUp(lnode, -1, 1);
+//			rnode = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(1),
+//									   false, true);
+//			node = (Node *) make_op(NULL, list_make1(makeString("<")),
+//									lnode, rnode, -1);
+//			limitqual = make_and_qual(limitqual, node);
+//		}
+//
+//		/* Replace trivial EXISTS(...) with TRUE if no LIMIT/OFFSET. */
+//		if (limitqual == NULL)
+//			limitqual = makeBoolConst(true, false);
+//
+//		return limitqual;
+//	}
+//
+//	/* Delete ORDER BY and DISTINCT. */
+//	subselect->sortClause = NIL;
+//	subselect->distinctClause = NIL;
+//
+//	/*
+//	 * HAVING is the only place that could still contain aggregates. We can
+//	 * delete targetlist if there is no havingQual.
+//	 */
+//	if (subselect->havingQual == NULL)
+//	{
+//		subselect->targetList = NULL;
+//		subselect->hasAggs = false;
+//	}
+//
+//	/* If HAVING has no aggregates, demote it to WHERE. */
+//	else if (!checkExprHasAggs(subselect->havingQual))
+//	{
+//		subselect->jointree->quals = make_and_qual(subselect->jointree->quals,
+//												   subselect->havingQual);
+//		subselect->havingQual = NULL;
+//		subselect->hasAggs = false;
+//	}
+//
+//	/* Delete GROUP BY if no aggregates. */
+//	if (!subselect->hasAggs)
+//		subselect->groupClause = NIL;
+//
+//	/*
+//	 * If uncorrelated, the subquery will be executed only once.  Add LIMIT 1
+//	 * and let the SubLink remain unflattened.  It will become an InitPlan.
+//	 * (CDB TODO: Would it be better to go ahead and convert these to joins?)
+//	 */
+//	if (!contain_vars_of_level_or_above(sublink->subselect, 1))
+//	{
+//		subselect->limitCount = (Node *) makeConst(INT8OID, -1, sizeof(int64), Int64GetDatum(1),
+//												   false, true);
+//		return make_and_qual(limitqual, (Node *) sublink);
+//	}
+//
+//	/*
+//	 * Build subquery RTE, InClauseInfo, etc.
+//	 */
+//
+//	/* Build an InClauseInfo struct. */
+//	ininfo = makeNode(InClauseInfo);
+//	ininfo->sub_targetlist = NULL;
+//
+//	/* Determine the index of the subquery RTE that we'll create below. */
+//	rtindex = list_length(root->parse->rtable) + 1;
+//	ininfo->righthand = bms_make_singleton(rtindex);
+//
+////	/* Tell join planner to quell duplication of outer query result rows. */
+////	root->in_info_list = lappend(root->in_info_list, ininfo);
+//
+//	/* Make a subquery RTE in the current query level. */
+//	rte = addRangeTableEntryForSubquery(NULL,
+//										subselect,
+//										makeAlias("EXISTS_subquery", NIL),
+//										false);
+//	root->parse->rtable = lappend(root->parse->rtable, rte);
+//
+//	/* Tell caller to augment the jointree with a reference to the new RTE. */
+//	rtr = makeNode(RangeTblRef);
+//	rtr->rtindex = rtindex;
+//	*rtrlist_inout = lappend(*rtrlist_inout, rtr);
+//
+//	return limitqual;
+//}	/* convert_EXISTS_to_join */
 
 
 /*
@@ -1072,9 +1074,11 @@ convert_sublink_to_join(PlannerInfo *root, List **rtrlist_inout, SubLink *sublin
 
 	switch (sublink->subLinkType)
 	{
-		case EXISTS_SUBLINK:
-			result = convert_EXISTS_to_join(root, rtrlist_inout, sublink);
-			break;
+		//8.4-9.0-MERGE-FIX-ME: This has been replaced by convert_EXISTS_sublink_to_join
+//			also we need to port the unhandled cases to pull_up_sublinks
+//		case EXISTS_SUBLINK:
+//			result = convert_EXISTS_to_join(root, rtrlist_inout, sublink);
+//			break;
 
 		case NOT_EXISTS_SUBLINK:
 			result = convert_NOT_EXISTS_to_antijoin(root, rtrlist_inout, sublink);

@@ -1641,6 +1641,7 @@ ExecInitMergeJoin(MergeJoin *node, EState *estate, int eflags)
 		case JOIN_LEFT:
 		case JOIN_ANTI:
 		case JOIN_LASJ:
+		case JOIN_UNIQUE_OUTER:
 			mergestate->mj_FillOuter = true;
 			mergestate->mj_FillInner = false;
 			mergestate->mj_NullInnerTupleSlot =
@@ -1648,6 +1649,7 @@ ExecInitMergeJoin(MergeJoin *node, EState *estate, int eflags)
 							  ExecGetResultType(innerPlanState(mergestate)));
 			break;
 		case JOIN_RIGHT:
+		case JOIN_UNIQUE_INNER:
 			mergestate->mj_FillOuter = false;
 			mergestate->mj_FillInner = true;
 			mergestate->mj_NullOuterTupleSlot =

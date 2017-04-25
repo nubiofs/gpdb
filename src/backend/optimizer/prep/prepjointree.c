@@ -155,6 +155,7 @@ pull_up_sublinks(PlannerInfo * root, List **rtrlist_inout, Node *node)
                 subst = convert_EXISTS_sublink_to_join(root, sublink, true);
                 if (subst)
                     return subst;
+				return node;
             }
                 /*
                  *	 We normalize NOT subqueries using the following axioms:
@@ -175,11 +176,12 @@ pull_up_sublinks(PlannerInfo * root, List **rtrlist_inout, Node *node)
                 sublink->testexpr = (Node *) canonicalize_qual(
                         make_notclause((Expr *) sublink->testexpr));
             }
-            else
-            {
-                return node;
-            }
-            return pull_up_sublinks(root, rtrlist_inout, (Node *) sublink);
+			else
+			{
+				return node;	/* do nothing for other sublinks */
+			}
+
+			return (Node *) pull_up_sublinks(root, rtrlist_inout, (Node *) sublink);
         }
         else if (not_clause(arg))
         {
@@ -1274,8 +1276,6 @@ reduce_outer_joins_pass2(Node *jtnode,
 				}
 				break;
 			default:
-				elog(ERROR, "unrecognized join type: %d",
-					 (int) jointype);
 				break;
 		}
 
