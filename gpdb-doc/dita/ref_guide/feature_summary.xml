@@ -248,6 +248,12 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
               <entry colname="col3"/>
             </row>
             <row>
+              <entry colname="col1"><codeph>ALTER EXTENSION</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3">Changes the definition of a Greenplum Database extension - not
+                in PostgreSQL 8.3: based on PostgreSQL 9.6. </entry>
+            </row>
+            <row>
               <entry colname="col1"><codeph>ALTER FILESPACE</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3">Greenplum Database parallel tablespace feature - not in
@@ -281,6 +287,11 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
             </row>
             <row>
               <entry colname="col1"><codeph>ALTER OPERATOR CLASS</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3"/>
+            </row>
+            <row>
+              <entry colname="col1"><codeph>ALTER OPERATOR FAMILY</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3"/>
             </row>
@@ -341,6 +352,11 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
               <entry colname="col2">YES</entry>
               <entry colname="col3">An alias for <xref href="sql_commands/ALTER_ROLE.xml#topic1"
                   type="topic" format="dita"/></entry>
+            </row>
+            <row>
+              <entry colname="col1"><codeph>ALTER VIEW</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3"/>
             </row>
             <row>
               <entry colname="col1"><codeph>ANALYZE</codeph></entry>
@@ -425,6 +441,12 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
               <entry colname="col3"/>
             </row>
             <row>
+              <entry colname="col1"><codeph>CREATE EXTENSION</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3">Loads a new extension into Greenplum Database -  not in
+                PostgreSQL 8.3: based on PostgreSQL 9.6.</entry>
+            </row>
+            <row>
               <entry colname="col1"><codeph>CREATE EXTERNAL TABLE</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3">Greenplum Database parallel ETL feature - not in PostgreSQL
@@ -475,7 +497,7 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
             </row>
             <row>
               <entry colname="col1"><codeph>CREATE OPERATOR FAMILY</codeph></entry>
-              <entry colname="col2"><b>NO</b></entry>
+              <entry colname="col2">YES</entry>
               <entry colname="col3"/>
             </row>
             <row>
@@ -587,6 +609,11 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
                     CURRENT OF</codeph> clause is not supported in PL/pgSQL.</p></entry>
             </row>
             <row>
+              <entry colname="col1"><codeph>DISCARD</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3"/>
+            </row>
+            <row>
               <entry colname="col1"><codeph>DO</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3">PostgreSQL 9.0 feature</entry>
@@ -615,6 +642,12 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
               <entry colname="col1"><codeph>DROP DOMAIN</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3"/>
+            </row>
+            <row>
+              <entry colname="col1"><codeph>DROP EXTENSION</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3">Removes an extension from Greenplum Database – not in PostgreSQL
+                8.3: based on PostgreSQL 9.6.</entry>
             </row>
             <row>
               <entry colname="col1"><codeph>DROP EXTERNAL TABLE</codeph></entry>
@@ -656,6 +689,11 @@ NEXT 10 ROWS ONLY; </codeblock><p>Greenplum
             </row>
             <row>
               <entry colname="col1"><codeph>DROP OPERATOR CLASS</codeph></entry>
+              <entry colname="col2">YES</entry>
+              <entry colname="col3"/>
+            </row>
+            <row>
+              <entry colname="col1"><codeph>DROP OPERATOR FAMILY</codeph></entry>
               <entry colname="col2">YES</entry>
               <entry colname="col3"/>
             </row>
