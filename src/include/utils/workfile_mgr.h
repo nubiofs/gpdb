@@ -45,7 +45,7 @@ typedef struct
 	/* number of leaf (that did not re-spill) files for a hashagg operator */
 	uint32 num_leaf_files;
 
-	/* type of work files used by this operator */
+	/* type of workfiles used by this operator */
 	enum ExecWorkFileType type;
 
 	/* compression level used by bfz if applicable */
@@ -180,7 +180,4 @@ typedef enum WorkfileError
 extern WorkfileError workfileError;
 void workfile_mgr_report_error(void);
 
-
 #endif /* __WORKFILE_MGR_H__ */
-
-/* EOF */

@@ -69,10 +69,6 @@ function make_sync_tools() {
     # Requires these variables in the env:
     # IVYREPO_HOST IVYREPO_REALM IVYREPO_USER IVYREPO_PASSWD
     make sync_tools
-    # We have compiled LLVM with native zlib on CentOS6 and not from
-    # the zlib downloaded from artifacts.  Therefore, remove the zlib
-    # downloaded from artifacts in order to use the native zlib.
-    find ext -name 'libz.*' -exec rm -f {} \;
   popd
 }
 
@@ -177,7 +173,7 @@ function _main() {
   # symlink and `cd`s to the actual directory. Currently the Makefile in the
   # addon directory assumes that it is located in a particular location under
   # the source tree and hence needs to be copied over.
-  cp -R gpaddon_src gpdb_src/gpAux/$ADDON_DIR
+  rsync -auv gpaddon_src/ gpdb_src/gpAux/$ADDON_DIR
   build_gpdb "${BLD_TARGET_OPTION[@]}"
   build_gppkg
   if [ "$TARGET_OS" != "win32" ] ; then

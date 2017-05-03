@@ -15,8 +15,7 @@
 #   hitting max_connections limit on segments.
 #
 
-test: variadic_parameters default_parameters function_extensions
-test: spi xpath
+test: variadic_parameters default_parameters function_extensions spi
 
 test: leastsquares opr_sanity_gp decode_expr bitmapscan bitmapscan_ao case_gp limit_gp notin percentile join_gp union_gp gpcopy gp_create_table
 test: filter gpctas gpdist matrix toast sublink table_functions olap_setup complex opclass_ddl information_schema guc_env_var gp_explain
@@ -57,10 +56,7 @@ test: partition partition1 partition_indexing parruleord
 test: partition_locking
 test: vacuum_gp
 
-# FIXME: Temporarily disabled, because it trips an assertion. It's probably
-# harmless, but need to investigate and fix. Also, the number of errors put
-# in the error table, and hence the output, varies between runs.
-#test: sreh
+test: sreh
 
 # Disabled tests. XXX: Why are these disabled?
 #test: olap_window
@@ -79,7 +75,10 @@ test: resource_queue
 test: resource_queue_function
 test: wrkloadadmin
 
+# set gp_resource_manager and restart cluster to enable resource group
+test: resource_group_setup
 test: resource_group
+test: resource_group_cleanup
 
 # gp_toolkit performs a vacuum and checks that it truncated the relation. That
 # might not happen if other backends are holding transactions open, preventing
@@ -183,6 +182,7 @@ test: vacuum_full_heap_bitmapindex
 
 test: ao_checksum_corruption AOCO_Compression2 table_statistics
 test: metadata_track
+test: workfile_mgr_test
 
 # Test psql \du output
 test: psql_gpdb_du

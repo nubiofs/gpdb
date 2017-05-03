@@ -253,9 +253,9 @@
           <li id="pv160641">Use the Greenplum <codeph>gppkg</codeph> utility with the
               <codeph>-r</codeph> option to uninstall the PL/Java extension. This example uninstalls
             the PL/Java extension on a Linux
-              system:<codeblock>$ gppkg -r pljava-ossv1.4.0_pv1.3_gpdb4.3orca</codeblock><p>You can
-              run the <codeph>gppkg</codeph> utility with the options <codeph>-q --all</codeph> to
-              list the installed extensions and their versions.</p></li>
+              system:<codeblock>$ gppkg -r pljava-ossv1.4.0_pv1.3_gpdb<varname>version</varname></codeblock><p>You
+              can run the <codeph>gppkg</codeph> utility with the options <codeph>-q --all</codeph>
+              to list the installed extensions and their versions.</p></li>
           <li dir="ltr">Reload
             <codeph>greenplum_path.sh</codeph>.<codeblock dir="ltr">$ source $GPHOME/greenplum_path.sh</codeblock></li>
           <li id="pv158621">Restart the database.<codeblock>$ gpstop -r </codeblock></li>

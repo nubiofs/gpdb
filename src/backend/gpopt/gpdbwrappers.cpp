@@ -2851,15 +2851,29 @@ gpdb::SzDefGetString
 	return NULL;
 }
 
-Node *
-gpdb::PnodeFoldArrayexprConstants
+Expr *
+gpdb::PexprTransformArrayConstToArrayExpr
 	(
-	ArrayExpr *arrayexpr
+	Const *c
 	)
 {
 	GP_WRAP_START;
 	{
-		return fold_arrayexpr_constants(arrayexpr);
+		return transform_array_Const_to_ArrayExpr(c);
+	}
+	GP_WRAP_END;
+	return NULL;
+}
+
+Node *
+gpdb::PnodeEvalConstExpressions
+	(
+	Node *node
+	)
+{
+	GP_WRAP_START;
+	{
+		return eval_const_expressions(NULL, node);
 	}
 	GP_WRAP_END;
 	return NULL;
@@ -3040,19 +3054,6 @@ gpdb::FMDCacheNeedsReset
 	GP_WRAP_END;
 
 	return true;
-}
-
-bool
-gpdb::FPartialLogicalIndex
-		(
-			const LogicalIndexInfo *logicalIndexInfo
-		)
-{
-	// A logical index is complete when it's on all leaf partitions
-	// A partial logical index will have part constraints or default levels
-	// set
-	// c.f. BuildLogicalIndexInfo in cdbpartindex.c
-	return logicalIndexInfo->partCons || logicalIndexInfo->defaultLevels;
 }
 
 // EOF

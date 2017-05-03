@@ -64,7 +64,6 @@
             <topicref href="guc-list.xml#gp_backup_directIO_read_chunk_mb"/>
             <topicref href="guc-list.xml#gp_cached_segworkers_threshold"/>
             <topicref href="guc-list.xml#gp_command_count"/>
-            <topicref href="guc-list.xml#gp_connectemc_mode"/>
             <topicref href="guc-list.xml#gp_connection_send_timeout"/>
             <topicref href="guc-list.xml#gp_connections_per_thread"/>
             <topicref href="guc-list.xml#gp_content"/>
@@ -96,7 +95,6 @@
             <topicref href="guc-list.xml#gp_enable_sort_distinct"/>
             <topicref href="guc-list.xml#gp_enable_sort_limit"/>
             <topicref href="guc-list.xml#gp_external_enable_exec"/>
-            <topicref href="guc-list.xml#gp_external_grant_privileges"/>
             <topicref href="guc-list.xml#gp_external_max_segs"/>
             <topicref href="guc-list.xml#gp_filerep_tcp_keepalives_count"/>
             <topicref href="guc-list.xml#gp_filerep_tcp_keepalives_idle"/>
@@ -217,7 +215,6 @@
             <topicref href="guc-list.xml#optimizer_sort_factor"/>
             <topicref href="guc-list.xml#password_encryption"/>
             <topicref href="guc-list.xml#password_hash_algorithm"/>
-            <topicref href="guc-list.xml#pgcrypto.fips"/>
             <topicref href="guc-list.xml#pgstat_track_activity_query_size"/>
             <topicref href="guc-list.xml#pljava_classpath"/>
             <topicref href="guc-list.xml#pljava_classpath_insecure"/>

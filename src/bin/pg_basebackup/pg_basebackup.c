@@ -868,9 +868,9 @@ ReceiveAndUnpackTarFile(PGconn *conn, PGresult *res, int rownum)
 	FILE	   *file = NULL;
 
 	if (basetablespace)
-		strcpy(current_path, basedir);
+		strlcpy(current_path, basedir, sizeof(current_path));
 	else
-		strcpy(current_path, PQgetvalue(res, rownum, 2));
+		strlcpy(current_path, PQgetvalue(res, rownum, 2), sizeof(current_path));
 
 	/*
 	 * Get the COPY data
@@ -1287,6 +1287,9 @@ build_exclude_list(char **exclude_list, int num)
 {
 	PQExpBufferData	buf;
 	int				i;
+	char			quoted[MAXPGPATH];
+	int				error;
+	size_t			len;
 
 	if (num == 0)
 		return "";
@@ -1295,7 +1298,15 @@ build_exclude_list(char **exclude_list, int num)
 
 	for (i = 0; i < num; i++)
 	{
-		appendPQExpBuffer(&buf, "EXCLUDE '%s'", exclude_list[i]);
+		error = 1;
+		len = PQescapeStringConn(conn, quoted, exclude_list[i], MAXPGPATH, &error);
+		if (len == 0 || error != 0)
+		{
+			fprintf(stderr, _("%s: could not process exclude \"%s\": %s\n"),
+					progname, exclude_list[i], PQerrorMessage(conn));
+			disconnect_and_exit(1);
+		}
+		appendPQExpBuffer(&buf, "EXCLUDE '%s'", quoted);
 	}
 
 	if (PQExpBufferDataBroken(buf))
@@ -1318,6 +1329,7 @@ BaseBackup(void)
 	int			i;
 	char		xlogstart[64];
 	char		xlogend[64];
+	char 	   *exclude_list;
 
 	/*
 	 * Connect in replication mode to the server
@@ -1359,13 +1371,22 @@ BaseBackup(void)
 	 */
 	PQescapeStringConn(conn, escaped_label, label, sizeof(escaped_label), &i);
 	snprintf(current_path, sizeof(current_path),
-			 "BASE_BACKUP LABEL '%s' %s %s %s %s %s",
+			 "BASE_BACKUP LABEL '%s' %s %s %s %s",
 			 escaped_label,
 			 showprogress ? "PROGRESS" : "",
 			 includewal && !streamwal ? "WAL" : "",
 			 fastcheckpoint ? "FAST" : "",
-			 includewal ? "NOWAIT" : "",
-			 build_exclude_list(excludes, num_exclude));
+			 includewal ? "NOWAIT" : "");
+	exclude_list = build_exclude_list(excludes, num_exclude);
+	if (strlcat(current_path, exclude_list, sizeof(current_path)) >= sizeof(current_path))
+	{
+		fprintf(stderr, _("%s: exclude list too large\n"), progname);
+		if (num_exclude != 0)
+			free(exclude_list);
+		disconnect_and_exit(1);
+	}
+	if (num_exclude != 0)
+		free(exclude_list);
 
 	if (PQsendQuery(conn, current_path) == 0)
 	{
@@ -1390,7 +1411,7 @@ BaseBackup(void)
 				progname);
 		disconnect_and_exit(1);
 	}
-	strcpy(xlogstart, PQgetvalue(res, 0, 0));
+	strlcpy(xlogstart, PQgetvalue(res, 0, 0), sizeof(xlogstart));
 	if (verbose && includewal)
 		fprintf(stderr, "transaction log start point: %s\n", xlogstart);
 	PQclear(res);
@@ -1490,7 +1511,7 @@ BaseBackup(void)
 				progname);
 		disconnect_and_exit(1);
 	}
-	strcpy(xlogend, PQgetvalue(res, 0, 0));
+	strlcpy(xlogend, PQgetvalue(res, 0, 0), sizeof(xlogend));
 	if (verbose && includewal)
 		fprintf(stderr, "transaction log end point: %s\n", xlogend);
 	PQclear(res);

@@ -42,7 +42,6 @@ set optimizer_log=on;
 set optimizer=on;
 set optimizer_enable_indexjoin=on;
 set optimizer_trace_fallback = on;
-----------------------------------------------------------------------
 -- expected fall back to the planner
 select sum(distinct a), count(distinct b) from orca.r;
 
@@ -80,7 +79,6 @@ select 129::bigint, 5623::int, 45::smallint from orca.r;
 
 --  distributed tables
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 create table orca.foo (x1 int, x2 int, x3 int);
@@ -93,7 +91,6 @@ insert into orca.bar1 select i,i+1,i+2 from generate_series(1,20) i;
 insert into orca.bar2 select i,i+1,i+2 from generate_series(1,30) i;
 
 set optimizer=on;
-----------------------------------------------------------------------
 
 -- produces result node
 
@@ -131,7 +128,6 @@ select count(*)+1 from orca.foo x where x.x1 > (select count(*)+1 from orca.bar1
 select count(*)+1 from orca.foo x where x.x1 > (select count(*) from orca.bar1 y where y.x1 = x.x2);
 select count(*) from orca.foo x where x.x1 > (select count(*)+1 from orca.bar1 y where y.x1 = x.x2);
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 drop table orca.r cascade;
@@ -150,7 +146,6 @@ analyze orca.r;
 analyze orca.s;
 
 set optimizer=on;
-----------------------------------------------------------------------
 
 select * from orca.r, orca.s where r.a=s.c;
 
@@ -160,7 +155,6 @@ select * from orca.r, orca.s where r.a<s.c+1 or r.a>s.c;
 -- empty target list
 select r.* from orca.r, orca.s where s.c=2;
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 create table orca.m();
@@ -177,7 +171,6 @@ insert into orca.m1 select i-2, i%3 from generate_series(1,25) i;
 insert into orca.r values (null, 1);
 
 set optimizer=on;
-----------------------------------------------------------------------
 
 -- join types
 select r.a, s.c from orca.r left outer join orca.s on(r.a=s.c);
@@ -219,13 +212,11 @@ select * from orca.r where a = (select 1);
 -- union with const table
 select * from ((select a as x from orca.r) union (select 1 as x )) as foo order by x;
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 insert into orca.m values (1,-1), (1,2), (1,1);
 
 set optimizer=on;
-----------------------------------------------------------------------
 
 -- computed columns
 select a,a,a+b from orca.m;
@@ -259,7 +250,6 @@ select array[array[a,b]], array[b] from orca.r;
 select a, b from orca.m union select b,a from orca.m;
 SELECT a from orca.m UNION ALL select b from orca.m UNION ALL select a+b from orca.m group by 1;
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 drop table if exists orca.foo;
@@ -272,9 +262,8 @@ insert into orca.foo select i, i%2, i%4, i-1 from generate_series(1,40)i;
 insert into orca.bar select i, i%3, i%2 from generate_series(1,30)i;
 
 set optimizer=on;
-----------------------------------------------------------------------
 
---- distinct operation
+-- distinct operation
 SELECT distinct a, b from orca.foo;
 SELECT distinct foo.a, bar.b from orca.foo, orca.bar where foo.b = bar.a;
 SELECT distinct a, b from orca.foo;
@@ -289,7 +278,7 @@ SELECT distinct a, count(*) from orca.foo group by a;
 SELECT distinct foo.a, bar.b from orca.foo, orca.bar where foo.b = bar.a;
 SELECT distinct foo.a, bar.b, sum(bar.c+foo.c) from orca.foo, orca.bar where foo.b = bar.a group by foo.a, bar.b;
 
---- window operations
+-- window operations
 select row_number() over() from orca.foo order by 1;
 select rank() over(partition by b order by count(*)/sum(a)) from orca.foo group by a, b order by 1;
 select row_number() over(order by foo.a) from orca.foo inner join orca.bar using(b) group by foo.a, bar.b, bar.a;
@@ -303,7 +292,7 @@ select lead(a) over(order by a) from orca.r order by 1;
 select lag(c,d) over(order by c,d) from orca.s order by 1;
 select lead(c,c+d,1000) over(order by c,d) from orca.s order by 1;
 
---- cte 
+-- cte 
 with x as (select a, b from orca.r)
 select rank() over(partition by a, case when b = 0 then a+b end order by b asc) as rank_within_parent from x order by a desc ,case when a+b = 0 then a end ,b;
 
@@ -313,7 +302,6 @@ select 1 as v from orca.foo full join orca.bar on (foo.d = bar.a) group by d;
 select * from orca.r where a in (select count(*)+1 as v from orca.foo full join orca.bar on (foo.d = bar.a) group by d+r.b);
 select * from orca.r where r.a in (select d+r.b+1 as v from orca.foo full join orca.bar on (foo.d = bar.a) group by d+r.b) order by r.a, r.b;
 
-----------------------------------------------------------------------
 set optimizer=off;
 
 drop table if exists orca.rcte;
@@ -323,7 +311,6 @@ insert into orca.rcte select i, i%2, i%3 from generate_series(1,40)i;
 
 -- select disable_xform('CXformInlineCTEConsumer');
 set optimizer=on;
-----------------------------------------------------------------------
 
 with x as (select * from orca.rcte where a < 10) select * from x x1, x x2;
 with x as (select * from orca.rcte where a < 10) select * from x x1, x x2 where x2.a = x1.b;
@@ -338,7 +325,6 @@ with x as (select * from orca.rcte where a < 10) (select a from x x2) union all 
 with x as (select * from orca.r) select * from x order by a;
 -- with x as (select * from orca.rcte where a < 10) select * from x x1, x x2 where x2.a = x1.b limit 1;
 
-----------------------------------------------------------------------
 -- correlated execution
 select (select 1 union select 2);
 select (select generate_series(1,5));
@@ -352,7 +338,6 @@ select a, c from orca.r, orca.s where a  = any  (select c from orca.r) order by 
 select a, c from orca.r, orca.s where a  <> all (select c) order by a, c limit 10;
 select a, (select (select (select c from orca.s where a=c group by c))) as subq from orca.r order by a;
 with v as (select a,b from orca.r, orca.s where a=c)  select c from orca.s group by c having count(*) not in (select b from v where a=c) order by c;
-----------------------------------------------------------------------
 set optimizer=off;
 
 CREATE TABLE orca.onek (
@@ -383,7 +368,6 @@ insert into orca.onek values (670,6,0,2,0,10,0,70,70,170,670,0,1,'UZAAAA','GAAAA
 insert into orca.onek values (543,7,1,3,3,3,3,43,143,43,543,6,7,'XUAAAA','HAAAAA','VVVVxx');
 
 set optimizer=on;
-----------------------------------------------------------------------
 
 select ten, sum(distinct four) from orca.onek a
 group by ten 
@@ -392,7 +376,6 @@ having exists (select 1 from orca.onek b where sum(distinct a.four) = b.four);
 -- indexes on partitioned tables
 create table orca.pp(a int) partition by range(a)(partition pp1 start(1) end(10));
 create index pp_a on orca.pp(a);
-----------------------------------------------------------------------
 
 -- list partition tests 
 
@@ -522,10 +505,16 @@ insert into orca.t_date values('01-03-2012'::date,7,'tag1','tag2');
 insert into orca.t_date values('01-03-2012'::date,8,'tag1','tag2');
 insert into orca.t_date values('01-03-2012'::date,9,'tag1','tag2');
 
+set optimizer_enable_partial_index=on;
+set optimizer_enable_space_pruning=off;
 set optimizer_enable_constant_expression_evaluation=on;
+set optimizer_enumerate_plans=on;
+set optimizer_plan_id = 2;
 explain select * from orca.t_date where user_id=9;
 select * from orca.t_date where user_id=9;
 
+reset optimizer_enable_space_pruning;
+set optimizer_enumerate_plans=off;
 set optimizer_enable_constant_expression_evaluation=off;
 
 drop table if exists orca.t_text;
@@ -553,11 +542,16 @@ insert into orca.t_text values('01-03-2012'::date,7,'good','tag2');
 insert into orca.t_text values('01-03-2012'::date,8,'bad','tag2');
 insert into orca.t_text values('01-03-2012'::date,9,'ugly','tag2');
 
+set optimizer_enable_space_pruning=off;
 set optimizer_enable_constant_expression_evaluation=on;
+set optimizer_enumerate_plans=on;
+set optimizer_plan_id = 2;
 
 explain select * from orca.t_text where user_id=9;
 select * from orca.t_text where user_id=9;
 
+reset optimizer_enable_space_pruning;
+set optimizer_enumerate_plans=off;
 set optimizer_enable_constant_expression_evaluation=off;
 
 -- create a user defined type and only define equality on it
@@ -604,6 +598,7 @@ select * from orca.t_employee where user_id = 2;
 select enable_xform('CXformDynamicGet2DynamicTableScan');
 
 reset optimizer_enable_constant_expression_evaluation;
+reset optimizer_enable_partial_index;
 
 -- test that constant expression evaluation works with integers
 drop table if exists orca.t_ceeval_ints;
@@ -620,14 +615,21 @@ insert into orca.t_ceeval_ints values(3, 100, 'tag1', 'tag2');
 insert into orca.t_ceeval_ints values(4, 101, 'tag1', 'tag2');
 insert into orca.t_ceeval_ints values(5, 102, 'tag1', 'tag2');
 
+set optimizer_enable_partial_index=on;
+set optimizer_enable_space_pruning=off;
 set optimizer_enable_constant_expression_evaluation=on;
 set optimizer_use_external_constant_expression_evaluation_for_ints = on;
+set optimizer_enumerate_plans=on;
+set optimizer_plan_id = 2;
 
 explain select * from orca.t_ceeval_ints where user_id=4;
 select * from orca.t_ceeval_ints where user_id=4;
 
+reset optimizer_enable_space_pruning;
+reset optimizer_enumerate_plans;
 reset optimizer_use_external_constant_expression_evaluation_for_ints;
 reset optimizer_enable_constant_expression_evaluation;
+reset optimizer_enable_partial_index;
 
 -- test project elements in TVF
 
@@ -801,7 +803,7 @@ create table orca.p1(a int) partition by range(a)(partition pp1 start(1) end(10)
 insert into orca.p1 select * from generate_series(2,15);
 select count(*) from (select gp_segment_id,ctid,tableoid from orca.p1 group by gp_segment_id,ctid,tableoid) as foo;
 
---- MPP-25194: histograms on text columns are dropped in ORCA. NDVs of these histograms should be added to NDVRemain
+-- MPP-25194: histograms on text columns are dropped in ORCA. NDVs of these histograms should be added to NDVRemain
 CREATE TABLE orca.tmp_verd_s_pp_provtabs_agt_0015_extract1 (
     uid136 character(16),
     tab_nr smallint,
@@ -879,7 +881,7 @@ SELECT generate_series(1,10) EXCEPT SELECT 1;
 SELECT generate_series(1,10) INTERSECT SELECT 1;
 
 SELECT generate_series(1,10) UNION SELECT 1;
---- warning messages for missing stats
+-- warning messages for missing stats
 create table foo_missing_stats(a int, b int);
 insert into foo_missing_stats select i, i%5 from generate_series(1,20) i;
 create table bar_missing_stats(c int, d int);
@@ -982,9 +984,7 @@ select * from orca.bm_dyn_test_onepart where i=2 and t='2';
 select enable_xform('CXformDynamicGet2DynamicTableScan');
 reset optimizer_enable_bitmapscan;
 
------------------------------------------------
 -- More BitmapTableScan & BitmapIndexScan tests
------------------------------------------------
 
 set optimizer_enable_bitmapscan=on;
 create schema bm;
@@ -1130,9 +1130,8 @@ drop schema bm cascade;
 select enable_xform('CXformInnerJoin2HashJoin');
 select enable_xform('CXformLeftSemiJoin2HashJoin');
 reset optimizer_enable_bitmapscan;
--------------------------------------------------
 -- End of BitmapTableScan & BitmapIndexScan tests
--------------------------------------------------
+
 set optimizer_enable_constant_expression_evaluation=on;
 
 CREATE TABLE my_tt_agg_opt (
@@ -1166,6 +1165,7 @@ select disable_xform('CXformInnerJoin2HashJoin');
 select disable_xform('CXformInnerJoin2IndexGetApply');
 select disable_xform('CXformInnerJoin2NLJoin');
 
+set optimizer_enable_partial_index=on;
 set optimizer_enable_indexjoin=on;
 
 -- force_explain
@@ -1182,6 +1182,7 @@ ORDER BY 1 asc ;
 reset optimizer_segments;
 reset optimizer_enable_constant_expression_evaluation;
 reset optimizer_enable_indexjoin;
+reset optimizer_enable_partial_index;
 
 select enable_xform('CXformInnerJoin2DynamicIndexGetApply');
 select enable_xform('CXformInnerJoin2HashJoin');
@@ -1356,7 +1357,7 @@ EXPLAIN SELECT * FROM bitmap_test WHERE a in ('1', '2', 47);
 drop table if exists foo;
 -- end_ignore
 
-create table foo(a int, b int);
+create table foo(a int, b int) distributed by (a);
 
 -- The amount of log messages you get depends on a lot of options, but any
 -- difference in the output will make the test fail. Disable log_statement

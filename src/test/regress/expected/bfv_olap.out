@@ -1,6 +1,6 @@
----
---- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
----
+--
+-- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
+--
 create schema bfv_olap;
 set search_path=bfv_olap;
 -- SETUP
@@ -26,9 +26,9 @@ drop aggregate if exists mysum1(int4);
 drop aggregate if exists mysum2(int4);
 drop table if exists toy;
 -- end_ignore
----
---- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
----
+--
+-- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
+--
 -- SETUP
 -- start_ignore
 drop type if exists ema_type cascade;
@@ -84,9 +84,9 @@ drop function if exists ema_fin(t ema_type) cascade;
 drop function if exists ema_adv(t ema_type, v float, x float) cascade;
 drop type if exists ema_type cascade;
 -- end_ignore
----
---- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
----
+--
+-- Test case errors out when we define aggregates without preliminary functions and use it as an aggregate derived window function.
+--
 -- SETUP
 -- start_ignore
 drop type if exists ema_type cascade;
@@ -142,9 +142,9 @@ drop function if exists ema_fin(t ema_type) cascade;
 drop function if exists ema_adv(t ema_type, v float, x float) cascade;
 drop type if exists ema_type cascade;
 -- end_ignore
----
---- Test with/without group by
----
+--
+-- Test with/without group by
+--
 -- SETUP
 -- start_ignore
 DROP TABLE IF EXISTS r;
@@ -182,9 +182,9 @@ SELECT MAX(a) AS m FROM r GROUP BY b;
 -- start_ignore
 DROP TABLE IF EXISTS r;
 -- end_ignore
----
---- ORDER BY clause includes some grouping column or not
----
+--
+-- ORDER BY clause includes some grouping column or not
+--
 -- SETUP
 -- start_ignore
 DROP TABLE IF EXISTS r;
@@ -221,9 +221,9 @@ SELECT MAX(a) AS m FROM R GROUP BY b,e ORDER BY m;
 -- start_ignore
 DROP TABLE IF EXISTS r;
 -- end_ignore
----
---- ORDER BY 1 or more columns
----
+--
+-- ORDER BY 1 or more columns
+--
 -- SETUP
 -- start_ignore
 DROP TABLE IF EXISTS r;
@@ -270,9 +270,9 @@ SELECT MAX(e) AS m FROM r GROUP BY b ORDER BY m;
 -- start_ignore
 DROP TABLE IF EXISTS r;
 -- end_ignore
----
---- ORDER BY clause includes some grouping column or not
----
+--
+-- ORDER BY clause includes some grouping column or not
+--
 -- SETUP
 -- start_ignore
 DROP TABLE IF EXISTS dm_calendar;
@@ -324,9 +324,9 @@ SELECT "year_id" as id , min("year_name") as a  from (select "year_id" as "year_
 -- start_ignore
 DROP TABLE IF EXISTS dm_calendar;
 -- end_ignore
----
---- Test with/without group by with primary key as dist key
----
+--
+-- Test with/without group by with primary key as dist key
+--
 -- SETUP
 -- start_ignore
 drop table if exists t;
@@ -352,9 +352,9 @@ SELECT MAX(a) AS m FROM t GROUP BY b ORDER BY m;
 -- start_ignore
 drop table if exists t;
 -- end_ignore
----
---- Passing through distribution matching type in default implementation
----
+--
+-- Passing through distribution matching type in default implementation
+--
 -- SETUP
 -- start_ignore
 drop table if exists customer;
@@ -427,9 +427,9 @@ order by 1, 2;
 drop table if exists customer;
 drop table if exists sale;
 -- end_ignore
----
---- Optimzier query crashing for logical window with no window functions
----
+--
+-- Optimzier query crashing for logical window with no window functions
+--
 -- SETUP
 create table mpp23240(a int, b int, c int, d int, e int, f int);
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
@@ -452,4 +452,43 @@ from (select * from mpp23240 where f > 10) x;
 -- CLEANUP
 -- start_ignore
 drop table mpp23240;
+drop schema if exists bfv_olap;
+-- end_ignore
+-- Test for the bug reported at https://github.com/greenplum-db/gpdb/issues/2236
+create table test1 (x int, y int, z double precision);
+insert into test1 select a, b, a*10 + b from generate_series(1, 5) a, generate_series(1, 5) b;
+select sum(z) over (partition by x) as sumx, sum(z) over (partition by y) as sumy from test1;
+ sumx | sumy 
+------+------
+   65 |  155
+   65 |  160
+   65 |  165
+   65 |  170
+   65 |  175
+  115 |  155
+  115 |  160
+  115 |  165
+  115 |  170
+  115 |  175
+  165 |  155
+  165 |  160
+  165 |  165
+  165 |  170
+  165 |  175
+  215 |  155
+  215 |  160
+  215 |  165
+  215 |  170
+  215 |  175
+  265 |  155
+  265 |  160
+  265 |  165
+  265 |  170
+  265 |  175
+(25 rows)
+
+drop table test1;
+-- CLEANUP
+-- start_ignore
+drop schema bfv_olap cascade;
 -- end_ignore

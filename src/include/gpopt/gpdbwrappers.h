@@ -516,10 +516,6 @@ namespace gpdb {
 	// close the given relation
 	void CloseRelation(Relation rel);
 
-	// A logical index is partial if it's not present on all leaf partitions
-	// c.f. BuildLogicalIndexInfo in cdbpartindex.c
-	bool FPartialLogicalIndex(const LogicalIndexInfo* logicalIndexInfo);
-
 	// return the logical indexes for a partitioned table
 	LogicalIndexes *Plgidx(Oid oid);
 	
@@ -613,8 +609,11 @@ namespace gpdb {
 	// extract string value from defelem's value
 	char *SzDefGetString(DefElem *pdefelem);
 
-	// fold array expression constant values
-	Node *PnodeFoldArrayexprConstants(ArrayExpr *parrayexpr);
+	// transform array Const to an ArrayExpr
+	Expr *PexprTransformArrayConstToArrayExpr(Const *pConst);
+
+	// transform array Const to an ArrayExpr
+	Node *PnodeEvalConstExpressions(Node *node);
 
 	// static partition selection given a PartitionSelector node
 	SelectedParts *SpStaticPartitionSelection(PartitionSelector *ps);

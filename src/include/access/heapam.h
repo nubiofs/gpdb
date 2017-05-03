@@ -156,6 +156,8 @@ RelationFetchGpRelationNodeForXLog(Relation relation)
 	}
 }
 
+extern bool
+RelationAllowedToGenerateXLogRecord(Relation relation);
 
 typedef enum
 {
@@ -269,8 +271,8 @@ extern HTSU_Result heap_lock_tuple(Relation relation, HeapTuple tuple,
 				LockTupleMode mode, LockTupleWaitType waittype);
 extern void heap_inplace_update(Relation relation, HeapTuple tuple);
 extern void frozen_heap_inplace_update(Relation relation, HeapTuple tuple);
-extern bool heap_freeze_tuple(HeapTupleHeader tuple, TransactionId cutoff_xid,
-				  Buffer buf);
+extern bool heap_freeze_tuple(HeapTupleHeader tuple, TransactionId *cutoff_xid,
+							  Buffer buf, bool xlog_replay);
 
 extern Oid	simple_heap_insert(Relation relation, HeapTuple tup);
 extern Oid frozen_heap_insert(Relation relation, HeapTuple tup);

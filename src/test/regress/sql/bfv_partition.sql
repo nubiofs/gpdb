@@ -187,7 +187,7 @@ DROP TABLE TIMESTAMP_MONTH_rangep_STARTINCL;
 -- start_ignore
 DROP TABLE IF EXISTS T26002_T1;
 DROP TABLE IF EXISTS T26002_T2;
--- end_ignore
+
 
 CREATE TABLE T26002_T1 (empid int, departmentid int, year int, region varchar(20))
 DISTRIBUTED BY (empid)
@@ -200,7 +200,8 @@ DISTRIBUTED BY (empid)
        DEFAULT SUBPARTITION other_regions)
 ( START (2012) END (2015) EVERY (3),
   DEFAULT PARTITION outlying_years);
-  
+-- end_ignore
+
 -- TEST
 -- expected to see the partition key
 \d T26002_T1;

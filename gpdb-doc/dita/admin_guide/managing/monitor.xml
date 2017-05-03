@@ -13,16 +13,16 @@
     <p>Also, be sure to review <xref href="../monitoring/monitoring.dita#topic_kmz_lbg_rp"/> for
       monitoring activities you can script to quickly detect problems in the system. </p>
   </body>
-  <topic id="topic2" xml:lang="en">
+  <topic id="topic2" xml:lang="en" otherprops="pivotal">
     <title id="kj157177">Monitoring Database Activity and Performance</title>
     <body>
       <p>Pivotal provides an optional system monitoring and management tool, Greenplum Command
-        Center, that administrators can enable within Greenplum Database 4.3.</p>
+        Center, that administrators can enable within Greenplum Database.</p>
       <p>Enabling Greenplum Command Center is a two-part process. First, enable the Greenplum
         Database server to collect and store system metrics. Next, install and configure the
         Greenplum Command Center Console, an online application used to view the system metrics
         collected and store them in the Command Center's dedicated Greenplum database. </p>
-      <p>The Greenplum Command Center Console ships separately from your Greenplum Database 4.3
+      <p>The Greenplum Command Center Console ships separately from your Greenplum Database
         installation. Download the Greenplum Command Center Console package from <xref
           href="https://network.pivotal.io" scope="external" format="html">Pivotal Network
         </xref>and documentation from <xref href="http://gpdb.docs.pivotal.io" scope="external"
@@ -597,7 +597,7 @@ Distributed by: (sale_id)
         <title id="ff142493">The session_level_memory_consumption View</title>
         <body>
           <p>The <i>session_level_memory_consumption</i> view provides information about memory
-            consumption for sessions that are running SQL queries. </p>
+            consumption and idle time for sessions that are running SQL queries. </p>
           <p>In the view, the column <codeph>is_runaway</codeph> indicates whether Greenplum
             Database considers the session a runaway session based on the vmem memory consumption of
             the session's queries. When the queries consume an excessive amount of memory, Greenplum
@@ -722,6 +722,14 @@ Distributed by: (sale_id)
                   <entry colname="col3"/>
                   <entry colname="col4">Command count for the session when it was marked as a
                     runaway session.</entry>
+                </row>
+                <row>
+                  <entry colname="col1">
+                    <codeph>idle_state</codeph>
+                  </entry>
+                  <entry colname="col2">timestamptz</entry>
+                  <entry colname="col3"/>
+                  <entry colname="col4">The last time a query process in this session became idle.</entry>
                 </row>
               </tbody>
             </tgroup>

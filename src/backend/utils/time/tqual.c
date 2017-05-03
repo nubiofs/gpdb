@@ -117,9 +117,9 @@ TransactionId RecentGlobalXmin = InvalidTransactionId;
 
 
 /* local functions */
-static bool XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot, bool isXmax,
+static bool XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot,
 			  bool distributedSnapshotIgnore, bool *setDistributedSnapshotIgnore);
-static bool XidInMVCCSnapshot_Local(TransactionId xid, Snapshot snapshot, bool isXmax);
+static bool XidInMVCCSnapshot_Local(TransactionId xid, Snapshot snapshot);
 
 /*
  * Set the buffer dirty after setting t_infomask
@@ -1112,7 +1112,6 @@ HeapTupleSatisfiesMVCC(Relation relation, HeapTupleHeader tuple, Snapshot snapsh
 	 */
 	inSnapshot =
 		XidInMVCCSnapshot(HeapTupleHeaderGetXmin(tuple), snapshot,
-						  /* isXmax */ false,
 						  ((tuple->t_infomask2 & HEAP_XMIN_DISTRIBUTED_SNAPSHOT_IGNORE) != 0),
 						  &setDistributedSnapshotIgnore);
 	if (setDistributedSnapshotIgnore)
@@ -1168,7 +1167,6 @@ HeapTupleSatisfiesMVCC(Relation relation, HeapTupleHeader tuple, Snapshot snapsh
 	 */
 	inSnapshot =
 			XidInMVCCSnapshot(HeapTupleHeaderGetXmax(tuple), snapshot,
-							  /* isXmax */ true,
 							  ((tuple->t_infomask2 & HEAP_XMAX_DISTRIBUTED_SNAPSHOT_IGNORE) != 0),
 							  &setDistributedSnapshotIgnore);
 	if (setDistributedSnapshotIgnore)
@@ -1352,6 +1350,23 @@ HeapTupleSatisfiesVacuum(Relation relation, HeapTupleHeader tuple, TransactionId
 	if (!TransactionIdPrecedes(HeapTupleHeaderGetXmax(tuple), OldestXmin))
 		return HEAPTUPLE_RECENTLY_DEAD;
 
+	/*
+	 * Okay here means based on local visibility rules the tuple can be
+	 * reported as DEAD, lets check from distributed visibility if its still
+	 * LIVE. This is performed to avoid removing the tuple still needed based
+	 * on distributed snapshot.
+	 */
+	if (TransactionIdIsNormal(HeapTupleHeaderGetXmax(tuple)) &&
+		!(tuple->t_infomask2 & HEAP_XMAX_DISTRIBUTED_SNAPSHOT_IGNORE))
+	{
+		if (localXidSatisfiesAnyDistributedSnapshot(HeapTupleHeaderGetXmax(tuple)))
+			return HEAPTUPLE_RECENTLY_DEAD;
+
+		tuple->t_infomask2 |= HEAP_XMAX_DISTRIBUTED_SNAPSHOT_IGNORE;
+		markDirty(buffer, relation, tuple, /* isXmin */ false);
+		return HEAPTUPLE_DEAD;
+	}
+
 	/* Otherwise, it's dead and removable */
 	return HEAPTUPLE_DEAD;
 }
@@ -1531,7 +1546,7 @@ FreeXactSnapshot(void)
  *      and local snapshots?
  */
 static bool
-XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot, bool isXmax,
+XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot,
 				  bool distributedSnapshotIgnore, bool *setDistributedSnapshotIgnore)
 {
 	Assert (setDistributedSnapshotIgnore != NULL);
@@ -1555,8 +1570,7 @@ XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot, bool isXmax,
 		distributedSnapshotCommitted =
 			DistributedSnapshotWithLocalMapping_CommittedTest(
 				&snapshot->distribSnapshotWithLocalMapping,
-				xid,
-				isXmax);
+				xid, false);
 
 		switch (distributedSnapshotCommitted)
 		{
@@ -1581,7 +1595,7 @@ XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot, bool isXmax,
 		}
 	}
 
-	return XidInMVCCSnapshot_Local(xid, snapshot, isXmax);
+	return XidInMVCCSnapshot_Local(xid, snapshot);
 }
 
 /*
@@ -1594,7 +1608,7 @@ XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot, bool isXmax,
  * apply this for known-committed XIDs.
  */
 static bool
-XidInMVCCSnapshot_Local(TransactionId xid, Snapshot snapshot, bool isXmax)
+XidInMVCCSnapshot_Local(TransactionId xid, Snapshot snapshot)
 {
 	uint32		i;
 

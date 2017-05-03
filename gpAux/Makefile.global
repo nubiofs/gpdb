@@ -93,13 +93,19 @@ sol10_sparc_64_PYTHONHOME=$(BLD_THIRDPARTY_DIR)/python-2.7.12
 sol10_sparc_32_PYTHONHOME=/opt/python32-2.5.1
 suse10_x86_64_PYTHONHOME=$(BLD_THIRDPARTY_DIR)/python-2.7.12
 suse11_x86_64_PYTHONHOME=$(BLD_THIRDPARTY_DIR)/python-2.7.12
+sles11_x86_64_PYTHONHOME=$(BLD_THIRDPARTY_DIR)/python-2.7.12
+ifneq "$($(BLD_ARCH)_PYTHONHOME)" ""
 export PYTHONHOME=$($(BLD_ARCH)_PYTHONHOME)
+endif
 
-PYTHON=$(PYTHONHOME)/bin/python
+export PYTHON=python
+ifneq "$(PYTHONHOME)" ""
+export PYTHON=$(PYTHONHOME)/bin/python
 aix5_ppc_32_PYTHON=$(PYTHONHOME)/bin/python2.7
 aix5_ppc_64_PYTHON=$(PYTHONHOME)/bin/python2.7_64
 ifneq "$($(BLD_ARCH)_PYTHON)" ""
 export PYTHON=$($(BLD_ARCH)_PYTHON)
+endif
 endif
 
 # if PYTHONHOME was specified above, use it for the build
@@ -148,6 +154,7 @@ sol10_x86_64_BLD_CFLAGS=-m64
 sol10_x86_32_BLD_CFLAGS=-m32
 suse10_x86_64_BLD_CFLAGS=-m64
 suse11_x86_64_BLD_CFLAGS=-m64
+sles11_x86_64_BLD_CFLAGS=-m64
 win64_BLD_CFLAGS=-m64
 win32_BLD_CFLAGS=-m32
 aix5_ppc_64_BLD_CFLAGS=-maix64
@@ -196,28 +203,6 @@ sol10_sparc_32_GREP=ggrep
 sol10_sparc_GREP=ggrep
 ifneq "$($(BLD_ARCH)_GREP)" ""
 GREP=$($(BLD_ARCH)_GREP)
-endif
-
-# ldd by platform
-LDD=ldd
-osx106_x86_LDD=otool -L
-ifneq "$($(BLD_ARCH)_LDD)" ""
-LDD=$($(BLD_ARCH)_LDD)
-endif
-
-LDD_FILTER_NULL=cat
-LDD_FILTER=$(GREP) '\=>' | awk '{print $$3}' | perl -p -i -e 's,\.so.*$$,\.so,'
-aix5_ppc_32_LDD_FILTER=$(GREP) -v 'needs:' | $(AWK) -F\( '{print $$1}' | $(AWK) '{print $$1}' | $(GREP) -E -v '^/unix$$'
-aix5_ppc_64_LDD_FILTER=$(GREP) -v 'needs:' | $(AWK) -F\( '{print $$1}' | $(AWK) '{print $$1}' | $(GREP) -E -v '^/unix$$'
-osx106_x86_LDD_FILTER=awk '{print $$1}' | perl -p -i -e 's,\.[0-9\.]*\.$(LDD_LIB_SUFFIX)$$,\.,'
-ifneq "$($(BLD_ARCH)_LDD_FILTER)" ""
-LDD_FILTER=$($(BLD_ARCH)_LDD_FILTER)
-endif
-
-LDD_LIB_SUFFIX=
-osx106_x86_LDD_LIB_SUFFIX=dylib
-ifneq "$($(BLD_ARCH)_LDD_LIB_SUFFIX)" ""
-LDD_LIB_SUFFIX=$($(BLD_ARCH)_LDD_LIB_SUFFIX)
 endif
 
 # tar by platform

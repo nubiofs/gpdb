@@ -376,7 +376,6 @@ DROP TABLE IF EXISTS T26002_T1;
 NOTICE:  table "t26002_t1" does not exist, skipping
 DROP TABLE IF EXISTS T26002_T2;
 NOTICE:  table "t26002_t2" does not exist, skipping
--- end_ignore
 CREATE TABLE T26002_T1 (empid int, departmentid int, year int, region varchar(20))
 DISTRIBUTED BY (empid)
   PARTITION BY RANGE (year)
@@ -398,7 +397,7 @@ NOTICE:  CREATE TABLE will create partition "t26002_t1_1_prt_2_2_prt_usa" for ta
 NOTICE:  CREATE TABLE will create partition "t26002_t1_1_prt_2_2_prt_europe" for table "t26002_t1_1_prt_2"
 NOTICE:  CREATE TABLE will create partition "t26002_t1_1_prt_2_2_prt_asia" for table "t26002_t1_1_prt_2"
 NOTICE:  CREATE TABLE will create partition "t26002_t1_1_prt_2_2_prt_other_regions" for table "t26002_t1_1_prt_2"
-  
+-- end_ignore
 -- TEST
 -- expected to see the partition key
 \d T26002_T1;

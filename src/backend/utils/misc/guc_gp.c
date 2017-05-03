@@ -41,10 +41,6 @@
 #include "utils/resgroup.h"
 #include "utils/vmem_tracker.h"
 
-#ifdef USE_CONNECTEMC
-#include "emcconnect/api.h"
-#endif
-
 /*
  * These constants are copied from guc.c. They should not bitrot when we
  * merge guc.c with upstream, as these are natural constants that never
@@ -101,6 +97,7 @@ static const char *assign_gp_idf_deduplicate(const char *newval, bool doit,
 						  GucSource source);
 static const char *assign_explain_memory_verbosity(const char *newval, bool doit, GucSource source);
 static bool assign_dispatch_log_stats(bool newval, bool doit, GucSource source);
+static bool assign_gp_hashagg_default_nbatches(int newval, bool doit, GucSource source);
 
 static const char *assign_debug_dtm_action(const char *newval,
 						bool doit, GucSource source);
@@ -110,10 +107,6 @@ static const char *assign_debug_dtm_action_protocol(const char *newval,
 								 bool doit, GucSource source);
 static const char *assign_gp_log_format(const char *value, bool doit,
 					 GucSource source);
-
-#ifdef USE_CONNECTEMC
-static const char *assign_connectemc_mode(const char *newval, bool doit, GucSource source);
-#endif
 
 /* Helper function for guc setter */
 extern const char *gpvars_assign_gp_resqueue_priority_default_value(const char *newval,
@@ -330,11 +323,6 @@ char	   *gp_snmp_use_inform_or_trap;
 char	   *gp_snmp_debug_log;
 #endif
 
-char	   *gp_connectemc_mode;
-#ifdef USE_CONNECTEMC
-EmcConnectModeType_t gp_emcconnect_transport;
-#endif
-
 static char *gp_log_gang_str;
 static char *gp_log_fts_str;
 static char *gp_log_interconnect_str;
@@ -547,13 +535,12 @@ bool		optimizer_enable_outerjoin_to_unionall_rewrite;
 bool		optimizer_apply_left_outer_to_union_all_disregarding_stats;
 bool		optimizer_enable_ctas;
 bool		optimizer_remove_order_below_dml;
-bool		optimizer_static_partition_selection;
+bool		optimizer_enable_partial_index;
 bool		optimizer_dml_triggers;
 bool		optimizer_dml_constraints;
 bool		optimizer_enable_master_only_queries;
 bool		optimizer_multilevel_partitioning;
 bool		optimizer_enable_derive_stats_all_groups;
-bool		optimizer_explain_show_status;
 bool		optimizer_prefer_scalar_dqa_multistage_agg;
 bool 		optimizer_parallel_union;
 bool		optimizer_array_constraints;
@@ -2801,16 +2788,6 @@ struct config_bool ConfigureNamesBool_gp[] =
 	},
 
 	{
-		{"optimizer_explain_show_status", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Display optimizer version information in explain messages."),
-			NULL,
-			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
-		},
-		&optimizer_explain_show_status,
-		true, NULL, NULL
-	},
-
-	{
 		{"optimizer_prefer_multistage_agg", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Prefer multistage aggregates in the optimizer."),
 			NULL,
@@ -3016,12 +2993,12 @@ struct config_bool ConfigureNamesBool_gp[] =
 	},
 
 	{
-		{"optimizer_static_partition_selection", PGC_USERSET, DEVELOPER_OPTIONS,
-			gettext_noop("Enable static partition selection"),
+		{"optimizer_enable_partial_index", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("Enable heterogeneous index plans."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE
 		},
-		&optimizer_static_partition_selection,
+		&optimizer_enable_partial_index,
 		true, NULL, NULL
 	},
 
@@ -4089,12 +4066,14 @@ struct config_int ConfigureNamesInt_gp[] =
 
 	{
 		{"gp_hashagg_default_nbatches", PGC_USERSET, QUERY_TUNING_METHOD,
-			gettext_noop("Default number of batches for hashagg's (re-)spilling phases"),
-			NULL,
+			gettext_noop("Default number of batches for hashagg's (re-)spilling phases."),
+			gettext_noop("Must be a power of two."),
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_GPDB_ADDOPT
 		},
 		&gp_hashagg_default_nbatches,
-		32, 4, 1000000, NULL, NULL
+		32, 4, 1048576,
+		assign_gp_hashagg_default_nbatches,
+		NULL
 	},
 
 	{
@@ -5225,18 +5204,6 @@ struct config_string ConfigureNamesString_gp[] =
 
 #endif
 
-#ifdef USE_CONNECTEMC
-	{
-		{"gp_connectemc_mode", PGC_POSTMASTER, LOGGING,
-			gettext_noop("control connectemc functionality"),
-			gettext_noop("If 'on' send connectemc messages and log them locally, if 'local' log connectemc message locally only, if 'remote' send connectemc messages only, if 'off', no connectemc messages"),
-			GUC_SUPERUSER_ONLY
-		},
-		&gp_connectemc_mode,
-		"on", assign_connectemc_mode, NULL
-	},
-#endif
-
 	/* for pljava */
 	{
 		{"pljava_vmoptions", PGC_SUSET, CUSTOM_OPTIONS,
@@ -5849,44 +5816,26 @@ assign_dispatch_log_stats(bool newval, bool doit, GucSource source)
 	return true;
 }
 
-#ifdef USE_CONNECTEMC
-static const char *
-assign_connectemc_mode(const char *newval, bool doit, GucSource source)
+bool
+assign_gp_hashagg_default_nbatches(int newval, bool doit, GucSource source)
 {
-	if (pg_strcasecmp(newval, "on") == 0)
+	/* Must be a power of two */
+	if (0 == (newval & (newval - 1)))
 	{
 		if (doit)
 		{
-			gp_emcconnect_transport = EMCCONNECT_MODE_TYPE_ON;
-		}
-	}
-	else if (pg_strcasecmp(newval, "local") == 0)
-	{
-		if (doit)
-		{
-			gp_emcconnect_transport = EMCCONNECT_MODE_TYPE_LOCAL;
-		}
-	}
-	else if (pg_strcasecmp(newval, "remote") == 0)
-	{
-		if (doit)
-		{
-			gp_emcconnect_transport = EMCCONNECT_MODE_TYPE_REMOTE;
-		}
-	}
-	else if (pg_strcasecmp(newval, "off") == 0)
-	{
-		if (doit)
-		{
-			gp_emcconnect_transport = EMCCONNECT_MODE_TYPE_OFF;
+			gp_hashagg_default_nbatches = newval;
 		}
 	}
 	else
-		return NULL;			/* fail */
-	return newval;				/* OK */
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+			errmsg("gp_hashagg_default_nbatches must be a power of two: %d",
+					(int) newval)));
+	}
+	return true; /* OK */
 }
-#endif
-
 
 static const char *
 assign_debug_dtm_action(const char *newval,

@@ -71,16 +71,6 @@ typedef struct PlannedStmt
 
 	bool		transientPlan;	/* redo plan when TransactionXmin changes? */
 
-	/* Field qdContext communicates memory context on the QD  from portal to
-	 * dispatch.
-	 *
-	 * TODO Remove the field once evaluation of stable (and sequence) functions
-	 *      moves out of dispatch and into the executor.
-	 *
-	 * Do not copy or serialize.
-	 */
-	MemoryContext qdContext;
-
 	struct Plan *planTree;		/* tree of Plan nodes */
 
 	List	   *rtable;			/* list of RangeTblEntry nodes */
@@ -937,7 +927,7 @@ typedef struct Agg
 	 */
 	bool        lastAgg;
 
-	/* Should we stream this agg */
+	/* Stream entries when out of memory instead of spilling to disk */
 	bool 		streaming;
 } Agg;
 

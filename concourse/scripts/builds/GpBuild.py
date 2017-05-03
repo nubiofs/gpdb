@@ -14,7 +14,6 @@ class GpBuild(GpdbBuildBase):
                                 "--with-perl",
                                 "--with-libxml",
                                 "--with-python",
-                                "--disable-gpfdist",
                                 "--prefix=/usr/local/gpdb"], cwd="gpdb_src")
 
     def icg(self):
@@ -25,7 +24,7 @@ class GpBuild(GpdbBuildBase):
             return status
         status = subprocess.call([
             "runuser gpadmin -c \"source /usr/local/gpdb/greenplum_path.sh \
-            && make cluster\""], cwd="gpdb_src/gpAux/gpdemo", shell=True)
+            && make cluster DEFAULT_QD_MAX_CONNECT=150\""], cwd="gpdb_src/gpAux/gpdemo", shell=True)
         if status:
             return status
         return subprocess.call([

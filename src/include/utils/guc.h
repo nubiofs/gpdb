@@ -460,7 +460,7 @@ extern bool optimizer_enable_outerjoin_to_unionall_rewrite;
 extern bool optimizer_apply_left_outer_to_union_all_disregarding_stats;
 extern bool optimizer_enable_ctas;
 extern bool optimizer_remove_order_below_dml;
-extern bool optimizer_static_partition_selection;
+extern bool optimizer_enable_partial_index;
 extern bool optimizer_dml_triggers;
 extern bool	optimizer_dml_constraints;
 extern bool optimizer_direct_dispatch;
@@ -468,7 +468,6 @@ extern bool optimizer_control;	/* controls whether the user can change the setti
 extern bool optimizer_enable_master_only_queries;
 extern bool optimizer_multilevel_partitioning;
 extern bool optimizer_enable_derive_stats_all_groups;
-extern bool optimizer_explain_show_status;
 extern bool optimizer_prefer_scalar_dqa_multistage_agg;
 extern bool optimizer_parallel_union;
 extern bool optimizer_array_constraints;
@@ -640,6 +639,9 @@ extern int  gp_guc_list_show(struct StringInfoData    *buf,
                               List                     *guclist)
                 /* This extension allows gcc to check the format string */
                 __attribute__((__format__(__printf__, 3, 0)));
+
+extern struct config_generic *find_option(const char *name,
+				bool create_placeholders, int elevel);
 
 #ifdef EXEC_BACKEND
 extern void write_nondefault_variables(GucContext context);

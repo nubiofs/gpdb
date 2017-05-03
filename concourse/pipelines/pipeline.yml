@@ -41,6 +41,17 @@ resources:
     username: {{docker_username}}
     password: {{docker_password}}
 
+# TODO: Currently the windows clients and loaders are not packaging correctly.
+#       This resource will be used when the team responsible for the CLs is
+#       ready to fix the issues, and integrate the changes into the full CI for
+#       gpdb.
+# - name: centos-mingw
+#   type: docker-image
+#   source:
+#     repository: pivotaldata/centos-mingw
+#     username: {{docker_username}}
+#     password: {{docker_password}}
+
 - name: bin_gpdb_centos6
   type: s3
   source:
@@ -67,6 +78,28 @@ resources:
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: {{bin_gpdb_sles11_versioned_file}}
+
+# TODO: Currently the windows clients and loaders are not packaging correctly.
+#       This resource will be used when the team responsible for the CLs is
+#       ready to fix the issues, and integrate the changes into the full CI for
+#       gpdb.
+# - name: bin_gpdb_windows_clients
+#   type: s3
+#   source:
+#     access_key_id: {{bucket-access-key-id}}
+#     bucket: {{bucket-name}}
+#     region_name: {{aws-region}}
+#     secret_access_key: {{bucket-secret-access-key}}
+#     regexp: windows-cl/greenplum-clients-5.(.*)-WinXP-x86_32.msi
+#
+# - name: bin_gpdb_windows_loaders
+#   type: s3
+#   source:
+#     access_key_id: {{bucket-access-key-id}}
+#     bucket: {{bucket-name}}
+#     region_name: {{aws-region}}
+#     secret_access_key: {{bucket-secret-access-key}}
+#     regexp: windows-cl/greenplum-loaders-5.(.*)-WinXP-x86_32.msi
 
 - name: installer_rhel6_gpdb_rc
   type: s3
@@ -140,6 +173,24 @@ resources:
     secret_access_key: {{bucket-secret-access-key}}
     regexp: deliverables/appliance_installer/greenplum-db-appliance-(.*)-build-1-rhel6-x86_64.zip.sha256
 
+- name: installer_rhel6_gpdb_clients
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-clients-5.(.*)-rhel6-x86_64.zip
+
+- name: installer_rhel6_gpdb_loaders
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-loaders-5.(.*)-rhel6-x86_64.zip
+
 - name: installer_appliance_rhel7_gpdb_rc
   type: s3
   source:
@@ -157,6 +208,24 @@ resources:
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     regexp: deliverables/appliance_installer/greenplum-db-appliance-(.*)-build-1-rhel7-x86_64.zip.sha256
+
+- name: installer_rhel7_gpdb_clients
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-clients-5.(.*)-rhel7-x86_64.zip
+
+- name: installer_rhel7_gpdb_loaders
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-loaders-5.(.*)-rhel7-x86_64.zip
 
 - name: qautils_rhel6_tarball
   type: s3
@@ -185,6 +254,24 @@ resources:
     region_name: {{aws-region}}
     secret_access_key: {{bucket-secret-access-key}}
     versioned_file: deliverables/QAUtils-sles11-x86_64.tar.gz
+
+- name: installer_sles11_gpdb_clients
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-clients-5.(.*)-sles11-x86_64.zip
+
+- name: installer_sles11_gpdb_loaders
+  type: s3
+  source:
+    access_key_id: {{bucket-access-key-id}}
+    bucket: {{bucket-name}}
+    region_name: {{aws-region}}
+    secret_access_key: {{bucket-secret-access-key}}
+    regexp: deliverables/greenplum-loaders-5.(.*)-sles11-x86_64.zip
 
 - name: gpdb_src_tinc_tarball
   type: s3
@@ -237,11 +324,17 @@ jobs:
       IVYREPO_PASSWD: {{ivyrepo_passwd}}
       TARGET_OS: centos
       TARGET_OS_VERSION: 6
-      BLD_TARGETS: ""
+      BLD_TARGETS: "clients loaders"
   - aggregate:
     - put: bin_gpdb_centos6
       params:
         file: gpdb_artifacts/bin_gpdb.tar.gz
+    - put: installer_rhel6_gpdb_clients
+      params:
+        file: gpdb_artifacts/greenplum-clients-*-rhel6-x86_64.zip
+    - put: installer_rhel6_gpdb_loaders
+      params:
+        file: gpdb_artifacts/greenplum-loaders-*-rhel6-x86_64.zip
 
 - name: compile_gpdb_open_source_centos6
   public: true
@@ -271,11 +364,17 @@ jobs:
       IVYREPO_PASSWD: {{ivyrepo_passwd}}
       TARGET_OS: centos
       TARGET_OS_VERSION: 7
-      BLD_TARGETS: ""
+      BLD_TARGETS: "clients loaders"
   - aggregate:
     - put: bin_gpdb_centos7
       params:
         file: gpdb_artifacts/bin_gpdb.tar.gz
+    - put: installer_rhel7_gpdb_clients
+      params:
+        file: gpdb_artifacts/greenplum-clients-*-rhel7-x86_64.zip
+    - put: installer_rhel7_gpdb_loaders
+      params:
+        file: gpdb_artifacts/greenplum-loaders-*-rhel7-x86_64.zip
 
 - name: compile_gpdb_sles11
   plan:
@@ -294,10 +393,45 @@ jobs:
       IVYREPO_PASSWD: {{ivyrepo_passwd}}
       TARGET_OS: sles
       TARGET_OS_VERSION:
-      BLD_TARGETS: ""
+      BLD_TARGETS: "clients loaders"
   - put: bin_gpdb_sles11
     params:
       file: gpdb_artifacts/bin_gpdb.tar.gz
+  - put: installer_sles11_gpdb_clients
+    params:
+      file: gpdb_artifacts/greenplum-clients-*-sles11-x86_64.zip
+  - put: installer_sles11_gpdb_loaders
+    params:
+      file: gpdb_artifacts/greenplum-loaders-*-sles11-x86_64.zip
+
+# TODO: Currently the windows clients and loaders are not packaging correctly.
+#       This task will be used when the team responsible for the CLs is ready
+#       to fix the issues, and integrate the changes into the full CI for gpdb.
+# - name: compile_gpdb_windows_cl
+#   plan:
+#   - aggregate:
+#     - get: gpdb_src
+#       trigger: true
+#     - get: gpaddon_src
+#     - get: centos-mingw
+#   - task: compile_gpdb
+#     file: gpdb_src/concourse/tasks/compile_gpdb.yml
+#     image: centos-mingw
+#     params:
+#       TARGET_OS: win32
+#       TARGET_OS_VERSION:
+#       BLD_TARGETS: clients loaders
+#       IVYREPO_HOST: {{ivyrepo_host}}
+#       IVYREPO_REALM: {{ivyrepo_realm}}
+#       IVYREPO_USER: {{ivyrepo_user}}
+#       IVYREPO_PASSWD: {{ivyrepo_passwd}}
+#   - aggregate:
+#     - put: bin_gpdb_windows_clients
+#       params:
+#         file: gpdb_artifacts/greenplum-clients-*-WinXP-x86_32.msi
+#     - put: bin_gpdb_windows_loaders
+#       params:
+#         file: gpdb_artifacts/greenplum-loaders-*-WinXP-x86_32.msi
 
 # Stage 2a: Run regression tests against binaries (make installcheck-world and similar)
 
@@ -315,7 +449,7 @@ jobs:
     file: gpdb_src/concourse/tasks/ic_gpdb.yml
     image: centos-gpdb-dev-6
     params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=off -c codegen=off' installcheck-world
+      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=off' installcheck-world
       BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
       TEST_OS: centos
 
@@ -333,7 +467,7 @@ jobs:
     file: gpdb_src/concourse/tasks/ic_gpdb.yml
     image: centos-gpdb-dev-6
     params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on -c codegen=off' installcheck-world
+      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on' installcheck-world
       BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
       TEST_OS: centos
 
@@ -352,7 +486,7 @@ jobs:
     file: gpdb_src/concourse/tasks/ic_gpdb.yml
     image: centos-gpdb-dev-7
     params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on -c codegen=off' installcheck-world
+      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on' installcheck-world
       BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
       TEST_OS: centos
 
@@ -371,45 +505,9 @@ jobs:
     file: gpdb_src/concourse/tasks/ic_gpdb.yml
     image: sles-gpdb-dev-11-beta
     params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on -c codegen=off' installcheck-world
+      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on' installcheck-world
       BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
       TEST_OS: sles
-
-- name: icw_planner_codegen_centos6
-  plan:
-  - aggregate:
-    - get: gpdb_src
-      passed: [compile_gpdb_centos6]
-    - get: bin_gpdb
-      resource: bin_gpdb_centos6
-      passed: [compile_gpdb_centos6]
-      trigger: true
-    - get: centos-gpdb-dev-6
-  - task: ic_gpdb
-    file: gpdb_src/concourse/tasks/ic_gpdb.yml
-    image: centos-gpdb-dev-6
-    params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=off -c codegen=on' installcheck-world
-      BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
-      TEST_OS: centos
-
-- name: icw_gporca_codegen_centos6
-  plan:
-  - aggregate:
-    - get: gpdb_src
-      passed: [compile_gpdb_centos6]
-    - get: bin_gpdb
-      resource: bin_gpdb_centos6
-      passed: [compile_gpdb_centos6]
-      trigger: true
-    - get: centos-gpdb-dev-6
-  - task: ic_gpdb
-    file: gpdb_src/concourse/tasks/ic_gpdb.yml
-    image: centos-gpdb-dev-6
-    params:
-      MAKE_TEST_COMMAND: PGOPTIONS='-c optimizer=on -c codegen=on' installcheck-world
-      BLDWRAP_POSTGRES_CONF_ADDONS: "fsync=off"
-      TEST_OS: centos
 
 - name: MU_check_centos
   plan:
@@ -441,7 +539,8 @@ jobs:
     file: gpdb_src/concourse/tasks/regression_tests_gpcloud.yml
     image: centos-gpdb-dev-6
     params:
-      s3conf: {{s3_configuration_file}}
+      gpcloud_access_key_id: {{gpcloud-access-key-id}}
+      gpcloud_secret_access_key: {{gpcloud-secret-access-key}}
       overwrite_gpcloud: false
       TARGET_OS: centos
       TARGET_OS_VERSION: 6
@@ -853,6 +952,26 @@ jobs:
     file: gpdb_src/ci/pulse/api/monitor_pulse.yml
     params: *pulse_properties
 
+- name: MU_netbackup77
+  plan:
+  - get: nightly-trigger
+    trigger: true
+  - aggregate: *post_packaging_gets_trigger_false
+  - task: trigger_pulse
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/trigger_pulse.yml
+    input_mapping: *input_mappings
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-BehaveNetBackup77"
+  - task: monitor_pulse
+    attempts: 2
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/monitor_pulse.yml
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-BehaveNetBackup77"
+
 - name: MU_backup-restore
   plan:
   - aggregate: &post_packaging_gets_trigger_true
@@ -1162,3 +1281,64 @@ jobs:
         MAKE_TEST_COMMAND: optimizer_functional_part2
         BLDWRAP_POSTGRES_CONF_ADDONS: fsync=off optimizer_disable_missing_stats_collection=on
         TEST_OS: centos
+
+- name: MU_ddboost_full
+  plan:
+  - get: nightly-trigger
+    trigger: true
+  - aggregate: *post_packaging_gets_trigger_false
+  - task: trigger_pulse
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/trigger_pulse.yml
+    input_mapping: *input_mappings
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-DDBOOST_Full"
+  - task: monitor_pulse
+    attempts: 2
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/monitor_pulse.yml
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-DDBOOST_Full"
+
+
+- name: MU_ddboost_incremental
+  plan:
+  - get: nightly-trigger
+    trigger: true
+  - aggregate: *post_packaging_gets_trigger_false
+  - task: trigger_pulse
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/trigger_pulse.yml
+    input_mapping: *input_mappings
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-DDBOOST_Incremental"
+  - task: monitor_pulse
+    attempts: 2
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/monitor_pulse.yml
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-DDBOOST_Incremental"
+
+- name: MU_MFR
+  plan:
+  - get: nightly-trigger
+    trigger: true
+  - aggregate: *post_packaging_gets_trigger_false
+  - task: trigger_pulse
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/trigger_pulse.yml
+    input_mapping: *input_mappings
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-MFR"
+  - task: monitor_pulse
+    attempts: 2
+    tags: ["gpdb5-pulse-worker"]
+    file: gpdb_src/ci/pulse/api/monitor_pulse.yml
+    params:
+      <<: *pulse_properties
+      PULSE_PROJECT_NAME: "GPDB-MFR"

@@ -1,4 +1,17 @@
 -- test single row error handling, both in COPY and external tables.
+--
+-- # different errors depending on dispatch timings (missing data vs
+-- # invalid input syntax)
+--
+-- start_matchsubs
+--
+-- m/ERROR\:\s+Segment reject limit reached\.\s+Aborting operation\.\s+Last error was\:\s+(missing data for column|invalid input syntax for integer)/
+-- s/Last error was\:(.*)/Last error was: MISSING_DATA_OR_INVALID_INPUT_SYNTAX_FOR_INTEGER/
+--
+-- m/CONTEXT\:\s+COPY sreh_copy\,\s+line/
+-- s/line \d+(.*)/line SOME_LINE/
+--
+-- end_matchsubs
 -- ###########################################################
 -- COPY 
 -- ###########################################################
@@ -37,13 +50,33 @@ SELECT * FROM sreh_copy ORDER BY a,b,c;
 (6 rows)
 
 -- 
--- error table (also testing that it gets automatically generated)
+-- error logs
 --
-COPY sreh_copy FROM '@abs_srcdir@/data/bad_data1.data' DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-NOTICE:  Error table "sreh_copy_errtbl" does not exist. Auto generating an error table with the same name
-WARNING:  The error table was created in the same transaction as this operation. It will get dropped if transaction rolls back even if bad rows are present
-HINT:  To avoid this create the error table ahead of time using: CREATE TABLE <name> (cmdtime timestamp with time zone, relname text, filename text, linenum integer, bytenum integer, errmsg text, rawdata text, rawbytes bytea)
-NOTICE:  Found 10 data formatting errors (10 or more input rows). Errors logged into error table "sreh_copy_errtbl"
+DROP TABLE IF EXISTS sreh_copy; CREATE TABLE sreh_copy(a int, b int, c int) distributed by(a);
+COPY sreh_copy FROM '@abs_srcdir@/data/bad_data1.data' DELIMITER '|' LOG ERRORS SEGMENT REJECT LIMIT 1000;
+NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
+SELECT * FROM sreh_copy ORDER BY a,b,c;
+ a  | b  | c  
+----+----+----
+  1 |  1 |  1
+  5 |  5 |  5
+  6 |  6 |  6
+  9 |  9 |  9
+ 10 | 10 | 10
+ 14 | 14 | 14
+(6 rows)
+
+WITH error_log AS (SELECT gp_read_error_log('sreh_copy')) select count(*) from error_log;
+ count 
+-------
+    10
+(1 row)
+
+--
+-- error logs - do the same thing again. this time error logs exist and should get data appended
+--
+COPY sreh_copy FROM '@abs_srcdir@/data/bad_data1.data' DELIMITER '|' LOG ERRORS SEGMENT REJECT LIMIT 1000;
+NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
 SELECT * FROM sreh_copy ORDER BY a,b,c;
  a  | b  | c  
 ----+----+----
@@ -61,248 +94,80 @@ SELECT * FROM sreh_copy ORDER BY a,b,c;
  14 | 14 | 14
 (12 rows)
 
-SELECT relname,linenum,errmsg,rawdata FROM sreh_copy_errtbl ORDER BY linenum,rawdata,errmsg;
-  relname  | linenum |                      errmsg                       | rawdata 
------------+---------+---------------------------------------------------+---------
- sreh_copy |       2 | missing data for column "b"                       | 2
- sreh_copy |       3 | missing data for column "c"                       | 3|
- sreh_copy |       4 | extra data after last expected column             | 4|4|4|4
- sreh_copy |       7 | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_copy |       8 | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_copy |      11 | missing data for column "b"                       | eleven
- sreh_copy |      12 | extra data after last expected column             | 12||||
- sreh_copy |      13 | missing data for column "c"                       | 13|,13,
- sreh_copy |      15 | missing data for column "b"                       | 15
- sreh_copy |      16 | missing data for column "b"                       | sixteen
-(10 rows)
-
---
--- error table - do the same thing again. this time error table exists and should get reused and data appended
---
-COPY sreh_copy FROM '@abs_srcdir@/data/bad_data1.data' DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-NOTICE:  Found 10 data formatting errors (10 or more input rows). Errors logged into error table "sreh_copy_errtbl"
-SELECT * FROM sreh_copy ORDER BY a,b,c;
- a  | b  | c  
-----+----+----
-  1 |  1 |  1
-  1 |  1 |  1
-  1 |  1 |  1
-  5 |  5 |  5
-  5 |  5 |  5
-  5 |  5 |  5
-  6 |  6 |  6
-  6 |  6 |  6
-  6 |  6 |  6
-  9 |  9 |  9
-  9 |  9 |  9
-  9 |  9 |  9
- 10 | 10 | 10
- 10 | 10 | 10
- 10 | 10 | 10
- 14 | 14 | 14
- 14 | 14 | 14
- 14 | 14 | 14
-(18 rows)
-
-SELECT relname,linenum,errmsg,rawdata FROM sreh_copy_errtbl ORDER BY linenum,rawdata,errmsg;
-  relname  | linenum |                      errmsg                       | rawdata 
------------+---------+---------------------------------------------------+---------
- sreh_copy |       2 | missing data for column "b"                       | 2
- sreh_copy |       2 | missing data for column "b"                       | 2
- sreh_copy |       3 | missing data for column "c"                       | 3|
- sreh_copy |       3 | missing data for column "c"                       | 3|
- sreh_copy |       4 | extra data after last expected column             | 4|4|4|4
- sreh_copy |       4 | extra data after last expected column             | 4|4|4|4
- sreh_copy |       7 | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_copy |       7 | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_copy |       8 | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_copy |       8 | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_copy |      11 | missing data for column "b"                       | eleven
- sreh_copy |      11 | missing data for column "b"                       | eleven
- sreh_copy |      12 | extra data after last expected column             | 12||||
- sreh_copy |      12 | extra data after last expected column             | 12||||
- sreh_copy |      13 | missing data for column "c"                       | 13|,13,
- sreh_copy |      13 | missing data for column "c"                       | 13|,13,
- sreh_copy |      15 | missing data for column "b"                       | 15
- sreh_copy |      15 | missing data for column "b"                       | 15
- sreh_copy |      16 | missing data for column "b"                       | sixteen
- sreh_copy |      16 | missing data for column "b"                       | sixteen
+SELECT linenum, rawdata FROM gp_read_error_log('sreh_copy') ORDER BY linenum;
+ linenum | rawdata 
+---------+---------
+       2 | 2       
+         : 
+       2 | 2       
+         : 
+       3 | 3|      
+         : 
+       3 | 3|      
+         : 
+       4 | 4|4|4|4 
+         : 
+       4 | 4|4|4|4 
+         : 
+       7 | 7|7|bad 
+         : 
+       7 | 7|7|bad 
+         : 
+       8 | bad|8|8 
+         : 
+       8 | bad|8|8 
+         : 
+      11 | eleven  
+         : 
+      11 | eleven  
+         : 
+      12 | 12||||  
+         : 
+      12 | 12||||  
+         : 
+      13 | 13|,13, 
+         : 
+      13 | 13|,13, 
+         : 
+      15 | 15      
+         : 
+      15 | 15      
+         : 
+      16 | sixteen 
+         : 
+      16 | sixteen 
+         : 
 (20 rows)
 
 --
--- error table - do the same thing again. this time use data from STDIN (should show in errtable)
+-- error logs - do the same thing again. this time use data from STDIN (should show in error logs)
 --
-COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-NOTICE:  Found 2 data formatting errors (2 or more input rows). Errors logged into error table "sreh_copy_errtbl"
+DROP TABLE IF EXISTS sreh_copy; CREATE TABLE sreh_copy(a int, b int, c int) distributed by(a);
+COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS SEGMENT REJECT LIMIT 1000;
+NOTICE:  Found 2 data formatting errors (2 or more input rows). Rejected related input data.
 SELECT * FROM sreh_copy ORDER BY a,b,c;
   a  |  b  |  c  
 -----+-----+-----
-   1 |   1 |   1
-   1 |   1 |   1
-   1 |   1 |   1
-   5 |   5 |   5
-   5 |   5 |   5
-   5 |   5 |   5
-   6 |   6 |   6
-   6 |   6 |   6
-   6 |   6 |   6
-   9 |   9 |   9
-   9 |   9 |   9
-   9 |   9 |   9
-  10 |  10 |  10
-  10 |  10 |  10
-  10 |  10 |  10
-  14 |  14 |  14
-  14 |  14 |  14
-  14 |  14 |  14
  100 | 100 | 100
  300 | 300 | 300
-(20 rows)
+(2 rows)
 
-SELECT relname,linenum,errmsg,rawdata FROM sreh_copy_errtbl ORDER BY linenum,rawdata,errmsg;
-  relname  | linenum |                                 errmsg                                  |              rawdata              
------------+---------+-------------------------------------------------------------------------+-----------------------------------
- sreh_copy |       2 | missing data for column "b"                                             | 2
- sreh_copy |       2 | missing data for column "b"                                             | 2
- sreh_copy |       2 | missing data for column "b"                                             | 200 bad data from stdin
- sreh_copy |       3 | missing data for column "c"                                             | 3|
- sreh_copy |       3 | missing data for column "c"                                             | 3|
- sreh_copy |       4 | extra data after last expected column                                   | 4|4|4|4
- sreh_copy |       4 | extra data after last expected column                                   | 4|4|4|4
- sreh_copy |       4 | invalid input syntax for integer: " more bad data from stdin", column c | 500|500| more bad data from stdin
- sreh_copy |       7 | invalid input syntax for integer: "bad", column c                       | 7|7|bad
- sreh_copy |       7 | invalid input syntax for integer: "bad", column c                       | 7|7|bad
- sreh_copy |       8 | invalid input syntax for integer: "bad", column a                       | bad|8|8
- sreh_copy |       8 | invalid input syntax for integer: "bad", column a                       | bad|8|8
- sreh_copy |      11 | missing data for column "b"                                             | eleven
- sreh_copy |      11 | missing data for column "b"                                             | eleven
- sreh_copy |      12 | extra data after last expected column                                   | 12||||
- sreh_copy |      12 | extra data after last expected column                                   | 12||||
- sreh_copy |      13 | missing data for column "c"                                             | 13|,13,
- sreh_copy |      13 | missing data for column "c"                                             | 13|,13,
- sreh_copy |      15 | missing data for column "b"                                             | 15
- sreh_copy |      15 | missing data for column "b"                                             | 15
- sreh_copy |      16 | missing data for column "b"                                             | sixteen
- sreh_copy |      16 | missing data for column "b"                                             | sixteen
-(22 rows)
-
---
--- # different errors depending on dispatch timings (missing data vs
--- # invalid input syntax)
---
--- start_matchsubs
---
--- m/ERROR\:\s+Segment reject limit reached\.\s+Aborting operation\.\s+Last error was\:\s+(missing data for column|invalid input syntax for integer)/
--- s/Last error was\:(.*)/Last error was: MISSING_DATA_OR_INVALID_INPUT_SYNTAX_FOR_INTEGER/
---
--- m/CONTEXT\:\s+COPY sreh_copy\,\s+line/
--- s/line \d+(.*)/line SOME_LINE/
---
--- end_matchsubs
---
--- error table - have low reject limit that gets reached, and see that data rolled back from target table and appended to err table
---
-COPY sreh_copy FROM '@abs_srcdir@/data/bad_data1.data' DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 2;
-ERROR:  Segment reject limit reached. Aborting operation. Last error was: missing data for column "c"  (seg0 @hostname@:11001 pid=68456)
-CONTEXT:  COPY sreh_copy, line 3: "3|"
-SELECT * FROM sreh_copy ORDER BY a,b,c;
-  a  |  b  |  c  
------+-----+-----
-   1 |   1 |   1
-   1 |   1 |   1
-   1 |   1 |   1
-   5 |   5 |   5
-   5 |   5 |   5
-   5 |   5 |   5
-   6 |   6 |   6
-   6 |   6 |   6
-   6 |   6 |   6
-   9 |   9 |   9
-   9 |   9 |   9
-   9 |   9 |   9
-  10 |  10 |  10
-  10 |  10 |  10
-  10 |  10 |  10
-  14 |  14 |  14
-  14 |  14 |  14
-  14 |  14 |  14
- 100 | 100 | 100
- 300 | 300 | 300
-(20 rows)
-
--- the error table will have different count of rows in different
--- array configurations, as there's a chance that arrays with more
--- segdbs recorded more bad rows before one of the segments reached
--- the reject limit. Our only way to make sure data was indeed
--- appended at ABORT is to count the number of distinct inserts into
--- the error table. this is the 4th one, so must be 4.
-SELECT count(distinct(cmdtime)) FROM sreh_copy_errtbl;
+WITH error_log AS (SELECT gp_read_error_log('sreh_copy')) select count(*) from error_log;
  count 
 -------
-     4
+     2
 (1 row)
 
 --
--- autodrop - error table auto-dropped when auto created and no bad data
+-- constraint errors - data is rolled back (CHECK)
 --
-DROP TABLE sreh_copy_errtbl; 
-COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-NOTICE:  Error table "sreh_copy_errtbl" does not exist. Auto generating an error table with the same name
-WARNING:  The error table was created in the same transaction as this operation. It will get dropped if transaction rolls back even if bad rows are present
-HINT:  To avoid this create the error table ahead of time using: CREATE TABLE <name> (cmdtime timestamp with time zone, relname text, filename text, linenum integer, bytenum integer, errmsg text, rawdata text, rawbytes bytea)
-NOTICE:  Dropping the auto-generated unused error table
-HINT:  Use KEEP in LOG INTO clause to force keeping the error table alive
-SELECT * FROM sreh_copy_errtbl; -- it should not exist
-ERROR:  relation "sreh_copy_errtbl" does not exist
-LINE 1: SELECT * FROM sreh_copy_errtbl;
-                      ^
---
--- autodrop - error table not auto-dropped when KEEP specified
---
-COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl KEEP SEGMENT REJECT LIMIT 1000;
-NOTICE:  Error table "sreh_copy_errtbl" does not exist. Auto generating an error table with the same name
-WARNING:  The error table was created in the same transaction as this operation. It will get dropped if transaction rolls back even if bad rows are present
-HINT:  To avoid this create the error table ahead of time using: CREATE TABLE <name> (cmdtime timestamp with time zone, relname text, filename text, linenum integer, bytenum integer, errmsg text, rawdata text, rawbytes bytea)
-SELECT * FROM sreh_copy_errtbl; -- should exist and be empty
- cmdtime | relname | filename | linenum | bytenum | errmsg | rawdata | rawbytes 
----------+---------+----------+---------+---------+--------+---------+----------
-(0 rows)
-
---
--- autodrop - error table not auto-dropped when it wasn't auto generated, even if no bad data
---
-COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-SELECT * FROM sreh_copy_errtbl; -- should exist and be empty
- cmdtime | relname | filename | linenum | bytenum | errmsg | rawdata | rawbytes 
----------+---------+----------+---------+---------+--------+---------+----------
-(0 rows)
-
---
--- autodrop - error table not auto-dropped when there is bad data, even if auto-generated
---
-DROP TABLE sreh_copy_errtbl; 
-COPY sreh_copy FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl SEGMENT REJECT LIMIT 1000;
-NOTICE:  Error table "sreh_copy_errtbl" does not exist. Auto generating an error table with the same name
-WARNING:  The error table was created in the same transaction as this operation. It will get dropped if transaction rolls back even if bad rows are present
-HINT:  To avoid this create the error table ahead of time using: CREATE TABLE <name> (cmdtime timestamp with time zone, relname text, filename text, linenum integer, bytenum integer, errmsg text, rawdata text, rawbytes bytea)
-NOTICE:  Found 1 data formatting errors (1 or more input rows). Errors logged into error table "sreh_copy_errtbl"
-SELECT rawdata FROM sreh_copy_errtbl; -- should exist and have 1 row
- rawdata 
----------
- 1|bad|1
-(1 row)
-
---
--- constraint errors - data is rolled back from target table (CHECK)
---
-TRUNCATE sreh_copy_errtbl;
 CREATE TABLE sreh_constr(a int check (a > 10));
 NOTICE:  Table doesn't have 'DISTRIBUTED BY' clause -- Using column named 'a' as the Greenplum Database data distribution key for this table.
 HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sure column(s) chosen are the optimal data distribution key to minimize skew.
-COPY sreh_constr FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl KEEP SEGMENT REJECT LIMIT 1000;
+COPY sreh_constr FROM STDIN DELIMITER '|' LOG ERRORS SEGMENT REJECT LIMIT 1000;
 ERROR:  new row for relation "sreh_constr" violates check constraint "sreh_constr_a_check"  (seg0 @hostname@:11001 pid=68456)
 CONTEXT:  COPY sreh_constr, line 5: "9"
-SELECT COUNT(*) FROM sreh_copy_errtbl; -- should exist and have 1 bad format row
+WITH error_log AS (SELECT gp_read_error_log('sreh_constr')) select count(*) from error_log;
  count 
 -------
      1
@@ -317,13 +182,13 @@ DROP TABLE sreh_constr;
 --
 -- constraint errors - data is rolled back from target table (UNIQUE)
 --
-TRUNCATE sreh_copy_errtbl;
 CREATE TABLE sreh_constr(a int unique);
 NOTICE:  CREATE TABLE / UNIQUE will create implicit index "sreh_constr_a_key" for table "sreh_constr"
-COPY sreh_constr FROM STDIN DELIMITER '|' LOG ERRORS INTO sreh_copy_errtbl KEEP SEGMENT REJECT LIMIT 1000;
-ERROR:  duplicate key violates unique constraint "sreh_constr_a_key"  (seg0 @hostname@:11001 pid=68456)
+COPY sreh_constr FROM STDIN DELIMITER '|' LOG ERRORS SEGMENT REJECT LIMIT 1000;
+ERROR:  duplicate key value violates unique constraint "sreh_constr_a_key"  (seg0 @hostname@:11001 pid=68456)
+DETAIL:  Key (a)=(9) already exists.
 CONTEXT:  COPY sreh_constr, line 5: "9"
-SELECT COUNT(*) FROM sreh_copy_errtbl; -- should exist and have 1 bad format row
+WITH error_log AS (SELECT gp_read_error_log('sreh_constr')) select count(*) from error_log;
  count 
 -------
      1
@@ -365,12 +230,11 @@ NOTICE:  Found 1 data formatting errors (1 or more input rows). Rejected related
 -- cleanup
 DROP TABLE sreh_copy;
 DROP TABLE sreh_constr;
-DROP TABLE sreh_copy_errtbl;
 -- ###########################################################
 -- External Tables 
 -- ###########################################################
 CREATE EXTERNAL WEB TABLE gpfdist_sreh_start (x text)
-execute E'((@bindir@/gpfdist -p 8080 -d @abs_srcdir@/data  </dev/null >/dev/null 2>&1 &); sleep 7; echo "starting...") '
+execute E'((@bindir@/gpfdist -p 8080 -d @abs_srcdir@/data  </dev/null >/dev/null 2>&1 &); sleep 1; echo "starting...") '
 on SEGMENT 0
 FORMAT 'text' (delimiter '|');
 CREATE EXTERNAL WEB TABLE gpfdist_sreh_stop (x text)
@@ -442,75 +306,12 @@ SELECT count(*) FROM sreh_target;
 TRUNCATE sreh_target;
 DROP EXTERNAL TABLE sreh_ext;
 -- 
--- error table (also testing that it gets automatically generated)
+-- error logs
 --
 CREATE EXTERNAL TABLE sreh_ext(a int, b int, c int)
 LOCATION ('gpfdist://@hostname@:8080/bad_data1.data' )
 FORMAT 'text' (delimiter '|')
-LOG ERRORS INTO sreh_ext_errtbl
-SEGMENT REJECT LIMIT 1000;
-NOTICE:  Error table "sreh_ext_errtbl" does not exist. Auto generating an error table with the same name
-SELECT * FROM sreh_ext ORDER BY a;
-NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
- a  | b  | c  
-----+----+----
-  1 |  1 |  1
-  5 |  5 |  5
-  6 |  6 |  6
-  9 |  9 |  9
- 10 | 10 | 10
- 14 | 14 | 14
-(6 rows)
-
-SELECT relname,errmsg,rawdata FROM sreh_ext_errtbl ORDER BY errmsg,rawdata;
- relname  |                      errmsg                       | rawdata 
-----------+---------------------------------------------------+---------
- sreh_ext | extra data after last expected column             | 12||||
- sreh_ext | extra data after last expected column             | 4|4|4|4
- sreh_ext | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_ext | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_ext | missing data for column "b"                       | 15
- sreh_ext | missing data for column "b"                       | 2
- sreh_ext | missing data for column "b"                       | eleven
- sreh_ext | missing data for column "b"                       | sixteen
- sreh_ext | missing data for column "c"                       | 13|,13,
- sreh_ext | missing data for column "c"                       | 3|
-(10 rows)
-
-TRUNCATE sreh_ext_errtbl;
-INSERT INTO sreh_target SELECT * FROM sreh_ext;
-NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
-SELECT count(*) FROM sreh_target;
- count 
--------
-     6
-(1 row)
-
-SELECT relname,errmsg,rawdata FROM sreh_ext_errtbl ORDER BY errmsg,rawdata;
- relname  |                      errmsg                       | rawdata 
-----------+---------------------------------------------------+---------
- sreh_ext | extra data after last expected column             | 12||||
- sreh_ext | extra data after last expected column             | 4|4|4|4
- sreh_ext | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_ext | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_ext | missing data for column "b"                       | 15
- sreh_ext | missing data for column "b"                       | 2
- sreh_ext | missing data for column "b"                       | eleven
- sreh_ext | missing data for column "b"                       | sixteen
- sreh_ext | missing data for column "c"                       | 13|,13,
- sreh_ext | missing data for column "c"                       | 3|
-(10 rows)
-
-TRUNCATE sreh_ext_errtbl;
-TRUNCATE sreh_target;
-DROP EXTERNAL TABLE sreh_ext;
---
--- error table - do the same thing again. this time error table exists and should get reused
---
-CREATE EXTERNAL TABLE sreh_ext(a int, b int, c int)
-LOCATION ('gpfdist://@hostname@:8080/bad_data1.data' )
-FORMAT 'text' (delimiter '|')
-LOG ERRORS INTO sreh_ext_errtbl
+LOG ERRORS
 SEGMENT REJECT LIMIT 1000;
 SELECT * FROM sreh_ext ORDER BY a;
 NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
@@ -524,22 +325,12 @@ NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected relat
  14 | 14 | 14
 (6 rows)
 
-SELECT relname,errmsg,rawdata FROM sreh_ext_errtbl ORDER BY errmsg,rawdata;
- relname  |                      errmsg                       | rawdata 
-----------+---------------------------------------------------+---------
- sreh_ext | extra data after last expected column             | 12||||
- sreh_ext | extra data after last expected column             | 4|4|4|4
- sreh_ext | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_ext | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_ext | missing data for column "b"                       | 15
- sreh_ext | missing data for column "b"                       | 2
- sreh_ext | missing data for column "b"                       | eleven
- sreh_ext | missing data for column "b"                       | sixteen
- sreh_ext | missing data for column "c"                       | 13|,13,
- sreh_ext | missing data for column "c"                       | 3|
-(10 rows)
+WITH error_log AS (SELECT gp_read_error_log('sreh_ext')) select count(*) from error_log;
+ count 
+-------
+    10
+(1 row)
 
-TRUNCATE sreh_ext_errtbl;
 INSERT INTO sreh_target SELECT * FROM sreh_ext;
 NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
 SELECT count(*) FROM sreh_target;
@@ -548,23 +339,66 @@ SELECT count(*) FROM sreh_target;
      6
 (1 row)
 
-SELECT relname,errmsg,rawdata FROM sreh_ext_errtbl ORDER BY errmsg,rawdata;
- relname  |                      errmsg                       | rawdata 
-----------+---------------------------------------------------+---------
- sreh_ext | extra data after last expected column             | 12||||
- sreh_ext | extra data after last expected column             | 4|4|4|4
- sreh_ext | invalid input syntax for integer: "bad", column a | bad|8|8
- sreh_ext | invalid input syntax for integer: "bad", column c | 7|7|bad
- sreh_ext | missing data for column "b"                       | 15
- sreh_ext | missing data for column "b"                       | 2
- sreh_ext | missing data for column "b"                       | eleven
- sreh_ext | missing data for column "b"                       | sixteen
- sreh_ext | missing data for column "c"                       | 13|,13,
- sreh_ext | missing data for column "c"                       | 3|
-(10 rows)
+TRUNCATE sreh_target;
+--
+-- error logs - do the same thing again. this time error logs exist and should get data appended
+--
+SELECT * FROM sreh_ext ORDER BY a;
+NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
+ a  | b  | c  
+----+----+----
+  1 |  1 |  1
+  5 |  5 |  5
+  6 |  6 |  6
+  9 |  9 |  9
+ 10 | 10 | 10
+ 14 | 14 | 14
+(6 rows)
+
+SELECT linenum, rawdata FROM gp_read_error_log('sreh_ext') ORDER BY linenum;
+ linenum | rawdata 
+---------+---------
+       2 | 2
+       2 | 2
+       2 | 2
+       3 | 3|
+       3 | 3|
+       3 | 3|
+       4 | 4|4|4|4
+       4 | 4|4|4|4
+       4 | 4|4|4|4
+       7 | 7|7|bad
+       7 | 7|7|bad
+       7 | 7|7|bad
+       8 | bad|8|8
+       8 | bad|8|8
+       8 | bad|8|8
+      11 | eleven
+      11 | eleven
+      11 | eleven
+      12 | 12||||
+      12 | 12||||
+      12 | 12||||
+      13 | 13|,13,
+      13 | 13|,13,
+      13 | 13|,13,
+      15 | 15
+      15 | 15
+      15 | 15
+      16 | sixteen
+      16 | sixteen
+      16 | sixteen
+(30 rows)
+
+INSERT INTO sreh_target SELECT * FROM sreh_ext;
+NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
+SELECT count(*) FROM sreh_target;
+ count 
+-------
+     6
+(1 row)
 
 TRUNCATE sreh_target;
-TRUNCATE sreh_ext_errtbl;
 DROP EXTERNAL TABLE sreh_ext;
 --
 -- constraint errors - data is rolled back from both target and error tables (CHECK)
@@ -575,16 +409,15 @@ HINT:  The 'DISTRIBUTED BY' clause determines the distribution of data. Make sur
 CREATE EXTERNAL TABLE sreh_ext(a int, b int, c int)
 LOCATION ('gpfdist://@hostname@:8080/bad_data1.data' )
 FORMAT 'text' (delimiter '|')
-LOG ERRORS INTO sreh_ext_errtbl
+LOG ERRORS
 SEGMENT REJECT LIMIT 1000;
 INSERT INTO sreh_constr SELECT * FROM sreh_ext;
 NOTICE:  Found 10 data formatting errors (10 or more input rows). Rejected related input data.
-ERROR:  new row for relation "sreh_constr" violates check constraint "sreh_constr_c_check"  (seg1 @hostname@:11002 pid=68457)
-SELECT COUNT(*) FROM sreh_ext_errtbl; -- should be empty
- count 
--------
-    10
-(1 row)
+ERROR:  new row for relation "sreh_constr" violates check constraint "sreh_constr_c_check"  (seg1 172.17.0.7:40001 pid=2210)
+SELECT linenum, rawdata FROM gp_read_error_log('sreh_constr') ORDER BY linenum;
+ linenum | rawdata 
+---------+---------
+(0 rows)
 
 SELECT COUNT(*) FROM sreh_constr; -- should be empty
  count 
@@ -647,13 +480,9 @@ select * from gpfdist_sreh_stop;
 
 DROP EXTERNAL WEB TABLE gpfdist_sreh_stop;
 DROP EXTERNAL WEB TABLE gpfdist_sreh_start;
+DROP EXTERNAL TABLE sreh_ext;
 DROP EXTERNAL TABLE sreh_ext_2percent;
 DROP EXTERNAL TABLE sreh_ext_10percent;
 DROP EXTERNAL TABLE sreh_ext_20percent;
 DROP TABLE sreh_target;
-DROP TABLE sreh_ext_errtbl; -- should fail by dependency
-NOTICE:  external table sreh_ext depends on table sreh_ext_errtbl
-ERROR:  cannot drop table sreh_ext_errtbl because other objects depend on it
-HINT:  Use DROP ... CASCADE to drop the dependent objects too.
-DROP TABLE sreh_ext_errtbl CASCADE;
-NOTICE:  drop cascades to external table sreh_ext
+DROP TABLE sreh_constr;

@@ -57,9 +57,12 @@ endif
 
 BLD_CXX_LIB_DIR=$($(BLD_ARCH)_CXX_LIB_DIR)
 
-# help Windows builds find the cross-compiler and a pre-built curl
 ifeq ($(BLD_ARCH),win32)
+  # help Windows builds find the cross-compiler and a pre-built curl
   include Makefile.windows
+
+  # Host used for Windows packaging (only accessible from the gpdb5 concourse pipeline)
+  WIX_PACKAGER=build@wix-packaging.gpdb5-pipeline-vpc.pivotal.io
 endif
 
 #---------------------------------------------------------------------
@@ -106,7 +109,7 @@ ISCONFIG=$(GPPGDIR)/GNUmakefile
 ## On these platforms, we do the full build including the server. On other
 ## platforms, we do a client-only build.
 ##
-SERVER_PLATFORMS=rhel5_x86_32 rhel5_x86_64 rhel7_x86_64 rhel6_x86_64 suse10_x86_64 suse11_x86_64 linux_x86_64 osx106_x86
+SERVER_PLATFORMS=rhel5_x86_32 rhel5_x86_64 rhel7_x86_64 rhel6_x86_64 suse10_x86_64 suse11_x86_64 sles11_x86_64 linux_x86_64 osx106_x86
 
 #---------------------------------------------------------------------
 # GPPKG
@@ -116,7 +119,7 @@ SERVER_PLATFORMS=rhel5_x86_32 rhel5_x86_64 rhel7_x86_64 rhel6_x86_64 suse10_x86_
 ## Support gppkg platforms
 ##
 
-GPPKG_PLATFORMS=rhel5_x86_64 rhel7_x86_64 rhel6_x86_64 suse10_x86_64 suse11_x86_64
+GPPKG_PLATFORMS=rhel5_x86_64 rhel7_x86_64 rhel6_x86_64 suse10_x86_64 suse11_x86_64 sles11_x86_64
 
 #---------------------------------------------------------------------
 # Compiler options
@@ -161,11 +164,12 @@ CODEGEN_CONFIG=--enable-codegen --with-codegen-prefix=/opt/llvm-3.7.1
 win32_CONFIGFLAGS=--with-gssapi --without-libcurl $(APR_CONFIG)
 sol10_x86_64_CONFIGFLAGS=--enable-snmp --with-libxml $(APR_CONFIG)
 rhel5_x86_32_CONFIGFLAGS=--host=i686-pc-linux-gnu --enable-snmp --enable-ddboost --with-gssapi --enable-netbackup --with-libxml $(APR_CONFIG)
-rhel5_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
-rhel6_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
-rhel7_x86_64_CONFIGFLAGS=--enable-snmp --enable-connectemc --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+rhel5_x86_64_CONFIGFLAGS=--enable-snmp --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+rhel6_x86_64_CONFIGFLAGS=--enable-snmp --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+rhel7_x86_64_CONFIGFLAGS=--enable-snmp --enable-gpperfmon --enable-ddboost --with-gssapi --enable-netbackup ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
 suse10_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost --enable-gpperfmon ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
 suse11_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost --enable-gpperfmon ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
+sles11_x86_64_CONFIGFLAGS=--enable-snmp --enable-ddboost --enable-gpperfmon ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG) $(APU_CONFIG)
 linux_x86_64_CONFIGFLAGS=--enable-snmp ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
 osx106_x86_CONFIGFLAGS=--enable-snmp ${ORCA_CONFIG} ${CODEGEN_CONFIG} --with-libxml $(APR_CONFIG)
 
@@ -608,6 +612,7 @@ rhel5_x86_64_MPP_ARCH=RHEL5-x86_64
 rhel6_x86_64_MPP_ARCH=RHEL6-x86_64
 rhel7_x86_64_MPP_ARCH=RHEL7-x86_64
 osx106_x86_MPP_ARCH=OSX-i386
+sles11_x86_64_MPP_ARCH=SLES11-x86_64
 ifneq "$($(BLD_ARCH)_MPP_ARCH)" ""
 export MPP_ARCH=$($(BLD_ARCH)_MPP_ARCH)
 else
@@ -620,11 +625,11 @@ INSTLOC=$(GPDIR)
 endif
 
 VERSION:=$(shell [ -f ../VERSION ] && perl -pe 's, ,-,g' ../VERSION)
+VERSION_SHORT:=$(shell [ -f ../VERSION ] && perl -pe 's, .*,,g' ../VERSION)
 
 ifeq "$(findstring win,$(BLD_ARCH))" "win"
-BLD_PACKAGING_PID:=$(shell ssh build@harpy 'echo $$$$')
+BLD_PACKAGING_PID:=$(shell ssh $(WIX_PACKAGER) 'echo $$$$')
 endif
-
 
 clients :
 	if [ ! -z "$(CLIENTINSTLOC)" ] && [ "$(CLIENTINSTLOC)" != "/" ]; then rm -rf $(CLIENTINSTLOC); fi
@@ -654,6 +659,23 @@ endif
 	cd client/install/src/unix/ && \
 	$(MAKE) TAR=$(TAR) PRODUCT=Clients PACKAGE=greenplum-clients README=GPClientToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(CLIENTINSTLOC) INSTALL_DIR=../../../..
 
+ifneq "$(findstring win,$(BLD_ARCH))" "win"
+	cd client/install/src/unix/ && \
+	  $(MAKE) TAR=$(TAR) PRODUCT=Clients PACKAGE=greenplum-clients README=GPClientToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(CLIENTINSTLOC) INSTALL_DIR=../../../..
+else
+	if [ "$(BLD_PACKAGING_PID)" = "" ]; then \
+	    echo "ERROR: BLD_PACKAGING_PID must have a value for Windows packaging operations; check your Makefile"; \
+	    exit 1; \
+	fi
+	ssh $(WIX_PACKAGER) 'if [ -d $(BLD_PACKAGING_PID) ]; then rm -rf $(BLD_PACKAGING_PID); fi'
+	ssh $(WIX_PACKAGER) 'mkdir -p $(BLD_PACKAGING_PID)/packaging/src/windows'
+	scp -r client/install/src/windows/* $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/src/windows/
+	scp -r $(CLIENTINSTLOC) $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/
+	ssh $(WIX_PACKAGER) 'cd $(BLD_PACKAGING_PID)/packaging/src/windows/ && make PACKAGE=greenplum-$@ VERSION=$(VERSION_SHORT) SRCDIR=../../$(notdir $(CLIENTINSTLOC))'
+	scp $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/greenplum-$@-$(VERSION_SHORT)-WinXP-x86_32.msi .
+	chmod 755 greenplum-$@-$(VERSION_SHORT)-WinXP-x86_32.msi
+	ssh $(WIX_PACKAGER) 'rm -rf $(BLD_PACKAGING_PID)'
+endif
 endif
 
 loaders :
@@ -707,6 +729,23 @@ endif
 	cd client/install/src/unix/ && \
 	$(MAKE) TAR=$(TAR) PRODUCT=Loaders PACKAGE=greenplum-loaders README=GPLoadToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(LOADERSINSTLOC) INSTALL_DIR=../../../..
 
+ifneq "$(findstring win,$(BLD_ARCH))" "win"
+	cd client/install/src/unix/ && \
+	  $(MAKE) TAR=$(TAR) PRODUCT=Loaders PACKAGE=greenplum-loaders README=GPLoadToolsUnix VERSION=`perl -pe 's, ,-,g' ../../../../../VERSION` INSTALL_SRC=$(LOADERSINSTLOC) INSTALL_DIR=../../../..
+else
+	if [ "$(BLD_PACKAGING_PID)" = "" ]; then \
+	    echo "ERROR: BLD_PACKAGING_PID must have a value for Windows packaging operations; check your Makefile"; \
+	    exit 1; \
+	fi
+	ssh $(WIX_PACKAGER) 'if [ -d $(BLD_PACKAGING_PID) ]; then rm -rf $(BLD_PACKAGING_PID); fi'
+	ssh $(WIX_PACKAGER) 'mkdir -p $(BLD_PACKAGING_PID)/packaging/src/windows'
+	scp -r client/install/src/windows/* $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/src/windows/
+	scp -r $(LOADERSINSTLOC) $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/
+	ssh $(WIX_PACKAGER) 'cd $(BLD_PACKAGING_PID)/packaging/src/windows/ && make PACKAGE=greenplum-$@ VERSION=$(VERSION_SHORT) SRCDIR=../../$(notdir $(LOADERSINSTLOC))'
+	scp $(WIX_PACKAGER):$(BLD_PACKAGING_PID)/packaging/greenplum-$@-$(VERSION_SHORT)-WinXP-x86_32.msi .
+	chmod 755 greenplum-$@-$(VERSION_SHORT)-WinXP-x86_32.msi
+	ssh $(WIX_PACKAGER) 'rm -rf $(BLD_PACKAGING_PID)'
+endif
 endif
 
 #---------------------------------------------------------------------
@@ -894,16 +933,6 @@ endif
 	rm -rf $(INSTLOC)/bin/gppylib
 	find $(INSTLOC)/lib/python/gppylib -name test -type d | xargs rm -rf
 
-BLD_LDD=ldd
-ifneq "$($(BLD_ARCH)_LDD)" ""
-BLD_LDD=$($(BLD_ARCH)_LDD)
-endif
-
-BLD_LDD_FILTER=|awk '{print $$3}' | sort -u | perl -p -i -e 's,^(.*\.so.*),\1\*,'
-ifneq "$($(BLD_ARCH)_LDD_FILTER)" ""
-BLD_LDD_FILTER=$($(BLD_ARCH)_LDD_FILTER)
-endif
-
 libcopy=(cd $(1) && $(TAR) cf - $(2)) | (cd $(3) && $(TAR) xvf -)$(check_pipe_for_errors)
 
 .PHONY: copy-nbu-libs
@@ -955,18 +984,6 @@ copylibs : thirdparty-dist copy-nbu-libs
 	        echo "cp -p $$lib $(INSTLOC)/lib" ; \
 	        cp -p $$lib $(INSTLOC)/lib ; \
 	    done ; \
-	fi
-	if [ `uname -s` != 'AIX' -a `uname -s` != 'Darwin' ] ; then \
-	    lib_wildcards=`$(BLD_LDD) $(INSTLOC)/bin/lib/gpcheckdb | egrep 'libstdc\+\+' $(BLD_LDD_FILTER)` export lib_wildcards; \
-	    if [ -z "$${lib_wildcards}" ]; then exit 0; fi; \
-	    lib_list=`ls $${lib_wildcards}` export lib_list; \
-	    for lib in $${lib_list}; do \
-	        echo -n "Copying $$lib to $(subst $(CURDIR)/,,$(INSTLOC)/lib)..."; \
-	        if [ x"`dirname $$lib`" = x"$(INSTLOC)/lib" ]; then echo "already there."; continue; fi; \
-	        if [ -f $(INSTLOC)/lib/`basename $$lib` -a ! -w $(INSTLOC)/lib/`basename $$lib` ]; then chmod u+w $(INSTLOC)/lib/`basename $$lib`; fi; \
-	        (cd `dirname $$lib` && $(TAR) cf - `basename $$lib`) | (cd $(INSTLOC)/lib/ && $(TAR) xpf -)$(check_pipe_for_errors); \
-	        echo "done."; \
-	    done; \
 	fi
 	# Create the python directory to flag to build scripts that python has been handled
 	mkdir -p $(INSTLOC)/ext/python
@@ -1057,7 +1074,6 @@ clean :
 	@if [ -d Release -a -f Release/GNUmakefile ]; then cd Release; $(MAKE) clean; fi
 	@if [ -d $(GPPGDIR) -a -f $(GPPGDIR)/GNUmakefile ]; then cd $(GPPGDIR); $(MAKE) clean; fi
 	@if [ -d $(GPMGMT)/bin ]; then cd $(GPMGMT)/bin; $(MAKE) clean; fi
-	@if [ -d $(GPPERFMON) ]; then cd $(GPPERFMON); $(MAKE) clean; fi
 
 distclean :
 #	@if [ ! -f $(ISCONFIG) ]; then echo "GPDB root not configured, no need to clean it"; fi
@@ -1065,7 +1081,6 @@ distclean :
 	@if [ -d Release -a -f Release/GNUmakefile ]; then cd Release; $(MAKE) distclean; fi
 	@if [ -d $(GPPGDIR) -a -f $(GPPGDIR)/GNUmakefile ]; then cd $(GPPGDIR); $(MAKE) distclean; fi
 	@if [ -d $(GPMGMT)/bin ]; then cd $(GPMGMT)/bin; $(MAKE) distclean; fi
-	@if [ -d $(GPPERFMON) ]; then cd $(GPPERFMON); $(MAKE) clean; fi
 	@rm -f VERSION
 	@rm -f env.sh
 
